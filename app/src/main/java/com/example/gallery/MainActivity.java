@@ -39,7 +39,6 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
@@ -49,8 +48,6 @@ import okhttp3.Call;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
-
-import static android.os.SystemClock.sleep;
 
 public class MainActivity extends AppCompatActivity
 {
@@ -586,7 +583,7 @@ public class MainActivity extends AppCompatActivity
 	// TODO написать скрипт для редактирования текстовика на сервере
 	// TODO убирать меню + навигацию по клику на картинке
 	// TODO доработать визуалку
-	// TODO название картинки в статус-баре, динамический фон, возможность изменять тему в настройках, 
+	// TODO ??? название картинки в статус-баре, динамический фон, возможность изменять тему в настройках, свайпы
 	public void startLinksParser()
 	{
 		if(isConnected)

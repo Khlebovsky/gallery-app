@@ -6,8 +6,8 @@
     android:background="@color/backgroundColor"
     android:gravity="center">
 
-    <com.github.chrisbanes.photoview.PhotoView
-        android:id="@+id/photo_view"
+    <com.ortiz.touchview.TouchImageView
+        android:id="@+id/touch_image_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"/>
 

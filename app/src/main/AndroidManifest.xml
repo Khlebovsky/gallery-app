@@ -32,10 +32,10 @@
 		</activity>
 		<activity
 			android:name=".MainActivity"
-			android:configChanges="mcc|mnc|screenLayout|touchscreen|smallestScreenSize|keyboard|keyboardHidden|navigation|orientation|screenSize|fontScale|layoutDirection|colorMode|locale" />
+			android:configChanges="mcc|mnc|screenLayout|touchscreen|smallestScreenSize|keyboard|keyboardHidden|navigation|orientation|screenSize|fontScale|layoutDirection|colorMode|locale|uiMode" />
 		<activity
 			android:name=".FullImage"
-			android:configChanges="mcc|mnc|screenLayout|touchscreen|smallestScreenSize|keyboard|keyboardHidden|navigation|orientation|screenSize|fontScale|layoutDirection|colorMode|locale" />
+			android:configChanges="mcc|mnc|screenLayout|touchscreen|smallestScreenSize|keyboard|keyboardHidden|navigation|orientation|screenSize|fontScale|layoutDirection|colorMode|locale|uiMode" />
 	</application>
 
 </manifest>
