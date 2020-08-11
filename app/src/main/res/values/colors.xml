@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#AB0804</color>
+    <color name="colorPrimaryDark">#680402</color>
+    <color name="colorAccent">#000000</color>
+    <color name="backgroundColor">#FFFFFF</color>
+    <color name="listSelector">#40000000</color>
+    <color name="scrollbarColor">#48000000</color>
+    <color name="navBarColor">#000000</color>
+    <color name="transparent">#00ffffff</color>
+</resources>
