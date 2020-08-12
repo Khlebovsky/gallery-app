@@ -44,6 +44,7 @@ import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatDelegate;
 import okhttp3.Call;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -72,11 +73,12 @@ public class MainActivity extends AppCompatActivity
 	public static GridView gridView;
 	public static ConnectivityManager connectivityManager;
 	public static volatile boolean isConnected;
+	@Nullable
+	public static SharedPreferences sharedPreferences;
 	static int width;
 	static int height;
 	static float imageWidth;
-	@Nullable
-	SharedPreferences sharedPreferences;
+	static boolean isThemeChanged;
 	@Nullable
 	Parcelable state;
 	@Nullable
@@ -98,6 +100,20 @@ public class MainActivity extends AppCompatActivity
 		builder.setMessage("Нет подключения к интернету. Включите WI-FI или сотовую связь и попробуйте снова.");
 		builder.setPositiveButton("OK",new MyOnClickListener());
 		builder.show();
+	}
+
+	public void changeTheme()
+	{
+		final int nightMode=AppCompatDelegate.getDefaultNightMode();
+		if(nightMode==AppCompatDelegate.MODE_NIGHT_YES)
+		{
+			AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
+		}
+		else
+		{
+			AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
+		}
+		recreate();
 	}
 
 	public static void clearData()
@@ -130,12 +146,16 @@ public class MainActivity extends AppCompatActivity
 	{
 		@NonNull
 		final ConnectivityManager connectivityManager=(ConnectivityManager)getSystemService(Context.CONNECTIVITY_SERVICE);
+		//noinspection deprecation
 		@Nullable
 		final NetworkInfo wifiInfo=connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
+		//noinspection deprecation
 		@NonNull
 		final boolean wifiConnected=(wifiInfo!=null?wifiInfo.getState():null)==NetworkInfo.State.CONNECTED;
+		//noinspection deprecation
 		@Nullable
 		final NetworkInfo mobileInfo=connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_MOBILE);
+		//noinspection deprecation
 		@NonNull
 		final boolean mobileConnected=(mobileInfo!=null?mobileInfo.getState():null)==NetworkInfo.State.CONNECTED;
 		return wifiConnected||mobileConnected;
@@ -288,6 +308,28 @@ public class MainActivity extends AppCompatActivity
 	@Override
 	protected void onCreate(Bundle savedInstanceState)
 	{
+		sharedPreferences=getSharedPreferences("Gallery",MODE_PRIVATE);
+		if(!isThemeChanged&&Build.VERSION.SDK_INT >= 28)
+		{
+			try
+			{
+				@NonNull
+				final boolean isNightMode=sharedPreferences.getBoolean("isNightMode",false);
+				if(isNightMode)
+				{
+					AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
+				}
+				else
+				{
+					AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
+				}
+			}
+			catch(Exception e)
+			{
+				e.printStackTrace();
+			}
+			isThemeChanged=true;
+		}
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 		connectivityManager=(ConnectivityManager)getSystemService(CONNECTIVITY_SERVICE);
@@ -301,7 +343,6 @@ public class MainActivity extends AppCompatActivity
 		}
 		isConnected=isInternet();
 		imageWidth=getResources().getDimensionPixelSize(R.dimen.imageWidth);
-		sharedPreferences=getSharedPreferences("LinksStatus",MODE_PRIVATE);
 		gridView=findViewById(R.id.GridView);
 		try
 		{
@@ -349,17 +390,20 @@ public class MainActivity extends AppCompatActivity
 		display.getSize(size);
 		width=size.x;
 		height=size.y;
-		//noinspection AnonymousInnerClassMayBeStatic
-		memoryCache=new LruCache<String,Bitmap>(getMemorySize())
-		{
-			@Override
-			protected int sizeOf(String key,Bitmap value)
-			{
-				return value.getByteCount();
-			}
-		};
 		@NonNull
 		final int num=(int)(width/imageWidth);
+		if(memoryCache==null)
+		{
+			//noinspection AnonymousInnerClassMayBeStatic
+			memoryCache=new LruCache<String,Bitmap>(getMemorySize())
+			{
+				@Override
+				protected int sizeOf(String key,Bitmap value)
+				{
+					return value.getByteCount();
+				}
+			};
+		}
 		if(gridView!=null)
 		{
 			gridView.setColumnWidth((int)imageWidth);
@@ -475,6 +519,18 @@ public class MainActivity extends AppCompatActivity
 		@NonNull
 		final MenuInflater inflater=getMenuInflater();
 		inflater.inflate(R.menu.main,menu);
+		if(Build.VERSION.SDK_INT >= 28)
+		{
+			final int nightMode=AppCompatDelegate.getDefaultNightMode();
+			if(nightMode==AppCompatDelegate.MODE_NIGHT_YES)
+			{
+				menu.findItem(R.id.changeTheme).setTitle(R.string.lightTheme);
+			}
+			else
+			{
+				menu.findItem(R.id.changeTheme).setTitle(R.string.darkTheme);
+			}
+		}
 		return true;
 	}
 
@@ -483,19 +539,48 @@ public class MainActivity extends AppCompatActivity
 	{
 		super.onDestroy();
 		saveERRORLIST();
+		if(Build.VERSION.SDK_INT >= 28)
+		{
+			saveCurrentTheme();
+		}
 	}
 
 	@Override
-	public boolean onOptionsItemSelected(MenuItem item)
+	public boolean onOptionsItemSelected(@NonNull MenuItem item)
 	{
-		switch(item.getItemId())
+		if(Build.VERSION.SDK_INT >= 28)
 		{
-			case R.id.update:
-				startLinksParser();
-				return true;
-			case R.id.reloadErrorLinks:
-				relaodErrorLinks();
-				return true;
+			switch(item.getItemId())
+			{
+				case R.id.update:
+					startLinksParser();
+					return true;
+				case R.id.reloadErrorLinks:
+					relaodErrorLinks();
+					return true;
+				case R.id.changeTheme:
+					new Handler().postDelayed(new Runnable()
+					{
+						@Override
+						public void run()
+						{
+							changeTheme();
+						}
+					},500);
+					return true;
+			}
+		}
+		else
+		{
+			switch(item.getItemId())
+			{
+				case R.id.update:
+					startLinksParser();
+					return true;
+				case R.id.reloadErrorLinks:
+					relaodErrorLinks();
+					return true;
+			}
 		}
 		return super.onOptionsItemSelected(item);
 	}
@@ -512,6 +597,10 @@ public class MainActivity extends AppCompatActivity
 		}
 		bundleGridViewState.putParcelable("GridViewState",state);
 		saveERRORLIST();
+		if(Build.VERSION.SDK_INT >= 28)
+		{
+			saveCurrentTheme();
+		}
 	}
 
 	@Override
@@ -561,15 +650,30 @@ public class MainActivity extends AppCompatActivity
 		}
 	}
 
-	public void saveERRORLIST()
+	public static void saveCurrentTheme()
+	{
+		final int nightMode=AppCompatDelegate.getDefaultNightMode();
+		if(sharedPreferences!=null&&nightMode==AppCompatDelegate.MODE_NIGHT_YES)
+		{
+			sharedPreferences.edit().putBoolean("isNightMode",true).commit();
+		}
+		else if(sharedPreferences!=null&&nightMode==AppCompatDelegate.MODE_NIGHT_NO)
+		{
+			sharedPreferences.edit().putBoolean("isNightMode",false).commit();
+		}
+	}
+
+	public static void saveERRORLIST()
 	{
 		try
 		{
 			final Gson gson=new Gson();
 			@NonNull
 			final String hashMapString=gson.toJson(ERROR_LIST);
-			//noinspection ConstantConditions
-			sharedPreferences.edit().putString("LinksStatusJson",hashMapString).apply();
+			if(sharedPreferences!=null)
+			{
+				sharedPreferences.edit().putString("LinksStatusJson",hashMapString).commit();
+			}
 		}
 		catch(Exception e)
 		{
@@ -583,7 +687,8 @@ public class MainActivity extends AppCompatActivity
 	// TODO написать скрипт для редактирования текстовика на сервере
 	// TODO убирать меню + навигацию по клику на картинке
 	// TODO доработать визуалку
-	// TODO ??? название картинки в статус-баре, динамический фон, возможность изменять тему в настройках, свайпы
+	// TODO доработать свайпы
+	// TODO сделать темную тему для всех устройств
 	public void startLinksParser()
 	{
 		if(isConnected)
@@ -591,7 +696,8 @@ public class MainActivity extends AppCompatActivity
 			ImageDownloader.REPEAT_NUM=3;
 			clearData();
 			@NonNull
-			final ProgressDialog progressDialog=new ProgressDialog(MainActivity.this);
+			final ProgressDialog progressDialog;
+			progressDialog=Build.VERSION.SDK_INT >= 21?new ProgressDialog(MainActivity.this,R.style.AlertDialogStyle):new ProgressDialog(MainActivity.this);
 			progressDialog.setMessage("Обновление данных. Подождите...");
 			progressDialog.setCancelable(false);
 			progressDialog.show();

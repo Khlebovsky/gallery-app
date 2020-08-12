@@ -13,4 +13,17 @@
 		<item name="android:navigationBarColor">@color/colorAccent</item>
 		<item name="android:statusBarColor">@color/colorAccent</item>
 	</style>
+
+	<style name="FullImageScreen" parent="Theme.AppCompat.DayNight.DarkActionBar">
+		<item name="colorPrimary">@color/colorPrimary</item>
+		<item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+		<item name="colorAccent">@color/colorAccent</item>
+		<item name="android:navigationBarColor">@color/navBarColor</item>
+	</style>
+
+	<style name="AlertDialogStyle" parent="Theme.AppCompat.DayNight.Dialog.Alert">
+		<item name="colorAccent">@color/spinnerColor</item>
+		<item name="android:textColor">@color/spinnerColor</item>
+		<item name="android:background">@color/backgroundColor</item>
+	</style>
 </resources>

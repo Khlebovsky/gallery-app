@@ -1,8 +1,8 @@
 <resources>
 	<string name="app_name">Gallery</string>
-	<string name="invalid_links">Битые ссылки</string>
 	<string name="home">Назад</string>
 	<string name="update_data">Обновить данные</string>
-	<string name="deadlinks">Битые ссылки:</string>
 	<string name="updateErrorLinks">Обновить ссылки с ошибками</string>
+	<string name="darkTheme">Включить темную тему</string>
+	<string name="lightTheme">Включить светлую тему</string>
 </resources>

@@ -6,13 +6,13 @@ import android.graphics.BitmapFactory;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
-import android.util.Base64;
 import android.util.Log;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.concurrent.TimeUnit;
@@ -37,10 +37,10 @@ public final class ImageDownloader
 	static final File PREVIEWS=MainActivity.previews;
 	@Nullable
 	static final File BYTES=MainActivity.bytes;
+	public static int REPEAT_NUM=3;
 	static int imageWidth;
 	static int imageHeight;
 	static int ERROR_TIME_SLEEP=1500;
-	public static int REPEAT_NUM=3;
 	@NonNull
 	private static final String TAG="ImageDownloader";
 	private static int MAX_THREAD_NUM=2;
@@ -70,15 +70,9 @@ public final class ImageDownloader
 	static void downloadOrGetImageFromCache(final String url)
 	{
 		@NonNull
-		int maxLength=url.length();
-		if(url.length() >= 75)
-		{
-			maxLength=75;
-		}
+		final String urlHashMD5=urlToHashMD5(url);
 		@NonNull
-		final String urlBASE64=urlToBASE64(url).substring(0,maxLength);
-		@NonNull
-		final File path=new File(PREVIEWS,urlBASE64);
+		final File path=new File(PREVIEWS,urlHashMD5);
 		if(path.exists())
 		{
 			new Thread()
@@ -102,7 +96,7 @@ public final class ImageDownloader
 					if(bitmap!=null)
 					{
 						addBitmapToMemoryCache(url,bitmap);
-						FILE_NAMES.put(url,urlBASE64);
+						FILE_NAMES.put(url,urlHashMD5);
 						@NonNull
 						final Message message=GALLERY_HANDLER.obtainMessage();
 						GALLERY_HANDLER.sendMessage(message);
@@ -207,7 +201,7 @@ public final class ImageDownloader
 										try
 										{
 											@NonNull
-											final File pathBytes=new File(BYTES,urlBASE64);
+											final File pathBytes=new File(BYTES,urlHashMD5);
 											@NonNull
 											final OutputStream outputStream=new FileOutputStream(pathBytes);
 											byteArrayOutputStream.writeTo(outputStream);
@@ -256,9 +250,9 @@ public final class ImageDownloader
 												if(preview!=null)
 												{
 													addBitmapToMemoryCache(url,preview);
-													FILE_NAMES.put(url,urlBASE64);
+													FILE_NAMES.put(url,urlHashMD5);
 													@NonNull
-													final File previewName=new File(PREVIEWS,urlBASE64);
+													final File previewName=new File(PREVIEWS,urlHashMD5);
 													try
 													{
 														@NonNull
@@ -408,11 +402,28 @@ public final class ImageDownloader
 		}
 	}
 
-	public static String urlToBASE64(String url)
+	public static String urlToHashMD5(String url)
 	{
-		@NonNull
-		final String encodedString=Base64.encodeToString(url.getBytes(),Base64.URL_SAFE);
-		return encodedString;
+		try
+		{
+			@NonNull
+			final MessageDigest digest=java.security.MessageDigest.getInstance("MD5");
+			digest.update(url.getBytes());
+			@NonNull
+			final byte[] messageDigest=digest.digest();
+			@NonNull
+			final StringBuilder hexString=new StringBuilder();
+			for(final byte b : messageDigest)
+			{
+				hexString.append(Integer.toHexString(0xFF&b));
+			}
+			return hexString.toString();
+		}
+		catch(Exception e)
+		{
+			e.printStackTrace();
+		}
+		return "";
 	}
 
 	static class GalleryHandler extends Handler

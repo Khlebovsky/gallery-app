@@ -35,7 +35,8 @@
 			android:configChanges="mcc|mnc|screenLayout|touchscreen|smallestScreenSize|keyboard|keyboardHidden|navigation|orientation|screenSize|fontScale|layoutDirection|colorMode|locale|uiMode" />
 		<activity
 			android:name=".FullImage"
-			android:configChanges="mcc|mnc|screenLayout|touchscreen|smallestScreenSize|keyboard|keyboardHidden|navigation|orientation|screenSize|fontScale|layoutDirection|colorMode|locale|uiMode" />
+			android:configChanges="mcc|mnc|screenLayout|touchscreen|smallestScreenSize|keyboard|keyboardHidden|navigation|orientation|screenSize|fontScale|layoutDirection|colorMode|locale|uiMode"
+			android:theme="@style/FullImageScreen"/>
 	</application>
 
 </manifest>

@@ -9,4 +9,8 @@
 		android:id="@+id/reloadErrorLinks"
 		android:title="@string/updateErrorLinks"
 		app:showAsAction="never" />
+	<item
+		android:id="@+id/changeTheme"
+		android:title="@string/darkTheme"
+		app:showAsAction="never" />
 </menu>

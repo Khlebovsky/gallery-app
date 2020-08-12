@@ -8,4 +8,6 @@
     <color name="scrollbarColor">#48000000</color>
     <color name="navBarColor">#000000</color>
     <color name="transparent">#00ffffff</color>
+    <color name="white">#FFFFFF</color>
+    <color name="spinnerColor">#000000</color>
 </resources>
