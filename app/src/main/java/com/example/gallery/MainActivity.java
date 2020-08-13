@@ -89,6 +89,8 @@ public class MainActivity extends AppCompatActivity
 	private static final String MAIN="MainThread";
 	@NonNull
 	private static final String IMAGESURL="https://khlebovsky.ru/images.txt";
+	private static final int NETWORKCALLBACKAPI=24;
+	private static final int ALERTDIALOGSTYLEAPI=21;
 	private static NetworkCallback networkCallback;
 	private static ConnectivityReceiver connectivityReceiver;
 
@@ -98,7 +100,7 @@ public class MainActivity extends AppCompatActivity
 		final AlertDialog.Builder builder=new AlertDialog.Builder(MainActivity.this,R.style.AlertDialogStyle);
 		builder.setTitle("Нет интернета");
 		builder.setMessage("Нет подключения к интернету. Включите WI-FI или сотовую связь и попробуйте снова.");
-		builder.setPositiveButton("OK",new MyOnClickListener());
+		builder.setPositiveButton("OK",new AlertDialogOnClickListener());
 		builder.show();
 	}
 
@@ -138,24 +140,19 @@ public class MainActivity extends AppCompatActivity
 		quantity=(int)(((width/imageWidth)*(height/imageWidth))+((width/imageWidth)*4));
 		@NonNull
 		final int maxsize=(int)(imageSize*quantity);
-		//noinspection MultiplyOrDivideByPowerOfTwo
-		return maxsize*2;
+		return maxsize*3;
 	}
 
 	public boolean isInternet()
 	{
 		@NonNull
 		final ConnectivityManager connectivityManager=(ConnectivityManager)getSystemService(Context.CONNECTIVITY_SERVICE);
-		//noinspection deprecation
 		@Nullable
 		final NetworkInfo wifiInfo=connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
-		//noinspection deprecation
 		@NonNull
 		final boolean wifiConnected=(wifiInfo!=null?wifiInfo.getState():null)==NetworkInfo.State.CONNECTED;
-		//noinspection deprecation
 		@Nullable
 		final NetworkInfo mobileInfo=connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_MOBILE);
-		//noinspection deprecation
 		@NonNull
 		final boolean mobileConnected=(mobileInfo!=null?mobileInfo.getState():null)==NetworkInfo.State.CONNECTED;
 		return wifiConnected||mobileConnected;
@@ -309,7 +306,7 @@ public class MainActivity extends AppCompatActivity
 	protected void onCreate(Bundle savedInstanceState)
 	{
 		sharedPreferences=getSharedPreferences("Gallery",MODE_PRIVATE);
-		if(!isThemeChanged&&Build.VERSION.SDK_INT >= 28)
+		if(!isThemeChanged)
 		{
 			try
 			{
@@ -333,7 +330,7 @@ public class MainActivity extends AppCompatActivity
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 		connectivityManager=(ConnectivityManager)getSystemService(CONNECTIVITY_SERVICE);
-		if(Build.VERSION.SDK_INT >= 24)
+		if(Build.VERSION.SDK_INT >= NETWORKCALLBACKAPI)
 		{
 			networkCallback=new NetworkCallback();
 		}
@@ -476,7 +473,7 @@ public class MainActivity extends AppCompatActivity
 						builder.setTitle("Ошибка");
 						builder.setMessage("Ошибка загрузки: \n"+error);
 					}
-					builder.setPositiveButton("OK",new MyOnClickListener());
+					builder.setPositiveButton("OK",new AlertDialogOnClickListener());
 					builder.show();
 				}
 				else
@@ -494,7 +491,7 @@ public class MainActivity extends AppCompatActivity
 						final AlertDialog.Builder builder=new AlertDialog.Builder(MainActivity.this,R.style.AlertDialogStyle);
 						builder.setTitle("Ошибка");
 						builder.setMessage("Ошибка: \nПроизошла непредвиденная ошибка");
-						builder.setPositiveButton("OK",new MyOnClickListener());
+						builder.setPositiveButton("OK",new AlertDialogOnClickListener());
 						builder.show();
 						e.printStackTrace();
 					}
@@ -519,17 +516,14 @@ public class MainActivity extends AppCompatActivity
 		@NonNull
 		final MenuInflater inflater=getMenuInflater();
 		inflater.inflate(R.menu.main,menu);
-		if(Build.VERSION.SDK_INT >= 28)
+		final int nightMode=AppCompatDelegate.getDefaultNightMode();
+		if(nightMode==AppCompatDelegate.MODE_NIGHT_YES)
 		{
-			final int nightMode=AppCompatDelegate.getDefaultNightMode();
-			if(nightMode==AppCompatDelegate.MODE_NIGHT_YES)
-			{
-				menu.findItem(R.id.changeTheme).setTitle(R.string.lightTheme);
-			}
-			else
-			{
-				menu.findItem(R.id.changeTheme).setTitle(R.string.darkTheme);
-			}
+			menu.findItem(R.id.changeTheme).setTitle(R.string.lightTheme);
+		}
+		else
+		{
+			menu.findItem(R.id.changeTheme).setTitle(R.string.darkTheme);
 		}
 		return true;
 	}
@@ -539,48 +533,30 @@ public class MainActivity extends AppCompatActivity
 	{
 		super.onDestroy();
 		saveERRORLIST();
-		if(Build.VERSION.SDK_INT >= 28)
-		{
-			saveCurrentTheme();
-		}
+		saveCurrentTheme();
 	}
 
 	@Override
 	public boolean onOptionsItemSelected(@NonNull MenuItem item)
 	{
-		if(Build.VERSION.SDK_INT >= 28)
+		switch(item.getItemId())
 		{
-			switch(item.getItemId())
-			{
-				case R.id.update:
-					startLinksParser();
-					return true;
-				case R.id.reloadErrorLinks:
-					relaodErrorLinks();
-					return true;
-				case R.id.changeTheme:
-					new Handler().postDelayed(new Runnable()
+			case R.id.update:
+				startLinksParser();
+				return true;
+			case R.id.reloadErrorLinks:
+				relaodErrorLinks();
+				return true;
+			case R.id.changeTheme:
+				new Handler().postDelayed(new Runnable()
+				{
+					@Override
+					public void run()
 					{
-						@Override
-						public void run()
-						{
-							changeTheme();
-						}
-					},500);
-					return true;
-			}
-		}
-		else
-		{
-			switch(item.getItemId())
-			{
-				case R.id.update:
-					startLinksParser();
-					return true;
-				case R.id.reloadErrorLinks:
-					relaodErrorLinks();
-					return true;
-			}
+						changeTheme();
+					}
+				},500);
+				return true;
 		}
 		return super.onOptionsItemSelected(item);
 	}
@@ -597,10 +573,7 @@ public class MainActivity extends AppCompatActivity
 		}
 		bundleGridViewState.putParcelable("GridViewState",state);
 		saveERRORLIST();
-		if(Build.VERSION.SDK_INT >= 28)
-		{
-			saveCurrentTheme();
-		}
+		saveCurrentTheme();
 	}
 
 	@Override
@@ -623,7 +596,7 @@ public class MainActivity extends AppCompatActivity
 		try
 		{
 			{
-				if(Build.VERSION.SDK_INT >= 24)
+				if(Build.VERSION.SDK_INT >= NETWORKCALLBACKAPI)
 				{
 					connectivityManager.registerDefaultNetworkCallback(networkCallback);
 				}
@@ -685,10 +658,12 @@ public class MainActivity extends AppCompatActivity
 	// TODO возможность поделиться картинкой - окно добавления (фулл картинки, сохранить + отмена) список + сервер
 	// TODO возможность удалить картинку список + сервер
 	// TODO написать скрипт для редактирования текстовика на сервере
-	// TODO убирать меню + навигацию по клику на картинке
 	// TODO доработать визуалку
-	// TODO доработать свайпы
-	// TODO сделать темную тему для всех устройств
+	// TODO возможность перезагрузить картинку при ошибки декодирования во время открытия
+	// TODO исправить алгоритм памяти
+	// TODO протестировать свайпы на всех устройствах
+	// TODO протестировать ночную тему на всех устройствах
+	// TODO протестировать скрытие системных панелей в полноэкранном режиме
 	public void startLinksParser()
 	{
 		if(isConnected)
@@ -697,7 +672,7 @@ public class MainActivity extends AppCompatActivity
 			clearData();
 			@NonNull
 			final ProgressDialog progressDialog;
-			progressDialog=Build.VERSION.SDK_INT >= 21?new ProgressDialog(MainActivity.this,R.style.AlertDialogStyle):new ProgressDialog(MainActivity.this);
+			progressDialog=Build.VERSION.SDK_INT >= ALERTDIALOGSTYLEAPI?new ProgressDialog(MainActivity.this,R.style.AlertDialogStyle):new ProgressDialog(MainActivity.this);
 			progressDialog.setMessage("Обновление данных. Подождите...");
 			progressDialog.setCancelable(false);
 			progressDialog.show();
@@ -729,7 +704,7 @@ public class MainActivity extends AppCompatActivity
 	{
 		try
 		{
-			if(Build.VERSION.SDK_INT >= 24)
+			if(Build.VERSION.SDK_INT >= NETWORKCALLBACKAPI)
 			{
 				connectivityManager.unregisterNetworkCallback(networkCallback);
 			}
@@ -758,6 +733,15 @@ public class MainActivity extends AppCompatActivity
 				gridView.setAdapter(imageAdapter);
 			}
 		});
+	}
+
+	static class AlertDialogOnClickListener implements DialogInterface.OnClickListener
+	{
+		@Override
+		public void onClick(DialogInterface dialog,int which)
+		{
+			dialog.dismiss();
+		}
 	}
 
 	class LinksParser extends Thread
@@ -811,15 +795,6 @@ public class MainActivity extends AppCompatActivity
 			}
 			progressDialog.dismiss();
 			updateGallery();
-		}
-	}
-
-	static class MyOnClickListener implements DialogInterface.OnClickListener
-	{
-		@Override
-		public void onClick(DialogInterface dialog,int which)
-		{
-			dialog.dismiss();
 		}
 	}
 
