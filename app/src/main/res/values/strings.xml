@@ -5,4 +5,5 @@
 	<string name="updateErrorLinks">Обновить ссылки с ошибками</string>
 	<string name="darkTheme">Включить темную тему</string>
 	<string name="lightTheme">Включить светлую тему</string>
+	<string name="deleteImage">Удалить</string>
 </resources>

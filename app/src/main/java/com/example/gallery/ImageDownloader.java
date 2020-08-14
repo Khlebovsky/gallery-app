@@ -32,6 +32,12 @@ public final class ImageDownloader
 	@NonNull
 	public static final ArrayList<String> NO_INTERNET_LINKS=new ArrayList<>();
 	@NonNull
+	public static final String SCRIPT_URL="https://khlebovsky.ru/linkseditor.php";
+	@NonNull
+	public static final String SCRIPT_LOGIN="testinggalleryapprequest";
+	@NonNull
+	public static final String SCRIPT_PASSWORD="6e=Cmf&pUk7Lp{M@Gdq+";
+	@NonNull
 	static final ArrayList<String> URLS_IN_PROGRESS=new ArrayList<>();
 	@Nullable
 	static final File PREVIEWS=MainActivity.previews;

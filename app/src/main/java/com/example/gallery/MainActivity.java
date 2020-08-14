@@ -661,6 +661,7 @@ public class MainActivity extends AppCompatActivity
 	// TODO написать скрипт для редактирования текстовика на сервере
 	// TODO доработать визуалку
 	// TODO возможность перезагрузить картинку при ошибке декодирования во время открытия
+	// TODO возможность удалить картинку с ошибкой из диалога
 	public void startLinksParser()
 	{
 		if(isConnected)
