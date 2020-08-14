@@ -137,10 +137,11 @@ public class MainActivity extends AppCompatActivity
 		final int pixelsPerByte=4;
 		@NonNull
 		final float imageSize=imageWidth*imageWidth*pixelsPerByte;
-		quantity=(int)(((width/imageWidth)*(height/imageWidth))+((width/imageWidth)*4));
+		quantity=(int)(((width/imageWidth)*(height/imageWidth))+((width/imageWidth)*2));
+		//noinspection unused
 		@NonNull
 		final int maxsize=(int)(imageSize*quantity);
-		return maxsize*3;
+		return quantity;
 	}
 
 	public boolean isInternet()
@@ -397,7 +398,7 @@ public class MainActivity extends AppCompatActivity
 				@Override
 				protected int sizeOf(String key,Bitmap value)
 				{
-					return value.getByteCount();
+					return 1;
 				}
 			};
 		}
@@ -659,11 +660,7 @@ public class MainActivity extends AppCompatActivity
 	// TODO возможность удалить картинку список + сервер
 	// TODO написать скрипт для редактирования текстовика на сервере
 	// TODO доработать визуалку
-	// TODO возможность перезагрузить картинку при ошибки декодирования во время открытия
-	// TODO исправить алгоритм памяти
-	// TODO протестировать свайпы на всех устройствах
-	// TODO протестировать ночную тему на всех устройствах
-	// TODO протестировать скрытие системных панелей в полноэкранном режиме
+	// TODO возможность перезагрузить картинку при ошибке декодирования во время открытия
 	public void startLinksParser()
 	{
 		if(isConnected)

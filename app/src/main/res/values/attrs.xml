@@ -1,5 +1,4 @@
 <resources>
-	<bool name="isTablet">false</bool>
 	<dimen name="imageWidth">80dp</dimen>
 	<dimen name="preloaderSize">48dp</dimen>
 </resources>

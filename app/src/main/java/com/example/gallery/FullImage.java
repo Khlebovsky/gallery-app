@@ -20,25 +20,16 @@ import java.util.TimerTask;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
-import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
 
 public class FullImage extends AppCompatActivity
 {
 	public static boolean isFullScreen;
-	@Nullable
-	DisplayCutout displayCutout;
 	@NonNull
 	private static final String TAG="FullImageScreen";
 	private static final int FULLSCREENAPI=19;
 	private static final int CUTOUTAPI=28;
-	@SuppressWarnings("FieldCanBeLocal")
-	@Nullable
-	private static Toolbar toolbar;
-	@Nullable
-	private static ActionBar actionBar;
 
 	@RequiresApi(api=Build.VERSION_CODES.KITKAT)
 	void hideSystemUI()
@@ -47,10 +38,6 @@ public class FullImage extends AppCompatActivity
 		final View decorView=getWindow().getDecorView();
 		decorView.setSystemUiVisibility(
 			View.SYSTEM_UI_FLAG_IMMERSIVE|View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_LAYOUT_STABLE|View.SYSTEM_UI_FLAG_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_FULLSCREEN|View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
-		if(Build.VERSION.SDK_INT >= CUTOUTAPI&&actionBar!=null)
-		{
-			actionBar.hide();
-		}
 	}
 
 	@RequiresApi(api=Build.VERSION_CODES.P)
@@ -108,20 +95,8 @@ public class FullImage extends AppCompatActivity
 		});
 	}
 
-	@Override
-	public void onAttachedToWindow()
-	{
-		super.onAttachedToWindow();
-		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
-		{
-			displayCutout=getWindow().getDecorView().getRootWindowInsets().getDisplayCutout();
-			if(displayCutout!=null)
-			{
-				Log.d(TAG,"Margin top "+displayCutout.getSafeInsetTop());
-			}
-		}
-	}
-
+	// TODO исправить обрезание меню на телефонах с вырезами
+	// TODO исправить размер шрифта в заголовке
 	@Override
 	protected void onCreate(Bundle savedInstanceState)
 	{
@@ -135,11 +110,6 @@ public class FullImage extends AppCompatActivity
 		}
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_full_image);
-		if(Build.VERSION.SDK_INT >= CUTOUTAPI)
-		{
-			toolbar=(Toolbar)findViewById(R.id.toolbar);
-			setSupportActionBar(toolbar);
-		}
 		@NonNull
 		final Intent intent=getIntent();
 		//noinspection ConstantConditions
@@ -166,18 +136,7 @@ public class FullImage extends AppCompatActivity
 						}
 					}
 				}
-				if(Build.VERSION.SDK_INT >= CUTOUTAPI)
-				{
-					actionBar=getSupportActionBar();
-					if(actionBar!=null)
-					{
-						actionBar.setTitle(title);
-					}
-				}
-				else
-				{
-					setTitle(title);
-				}
+				setTitle(title);
 				@NonNull
 				final TouchImageView touchImageView=findViewById(R.id.touch_image_view);
 				//noinspection AnonymousInnerClassMayBeStatic
@@ -267,10 +226,6 @@ public class FullImage extends AppCompatActivity
 		@NonNull
 		final View decorView=getWindow().getDecorView();
 		decorView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE|View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
-		if(Build.VERSION.SDK_INT >= CUTOUTAPI&&actionBar!=null)
-		{
-			actionBar.show();
-		}
 	}
 
 	class BitmapWorkerTask extends AsyncTask<Integer,Void,Bitmap>
@@ -300,12 +255,10 @@ public class FullImage extends AppCompatActivity
 			timer.cancel();
 			if(bitmap!=null)
 			{
-				Log.d(TAG,"bitmap!=null");
 				@NonNull
 				final TouchImageView touchImageView=touchImageViewWeakReference.get();
 				if(touchImageView!=null)
 				{
-					Log.d(TAG,"touchImageView!=null");
 					touchImageView.setImageBitmap(bitmap);
 					touchImageView.setDoubleTapScale(3);
 					touchImageView.setMaxZoom(10);
@@ -314,13 +267,11 @@ public class FullImage extends AppCompatActivity
 				}
 				else
 				{
-					Log.d(TAG,"touchImageView==null");
 					showErrorAlertDialog();
 				}
 			}
 			else
 			{
-				Log.d(TAG,"bitmap==null");
 				showErrorAlertDialog();
 			}
 		}
@@ -328,7 +279,6 @@ public class FullImage extends AppCompatActivity
 		@Override
 		protected void onPreExecute()
 		{
-			Log.d(TAG,"Декодирование начато "+image);
 			@NonNull
 			final ShowLoading showLoading=new ShowLoading();
 			timer.schedule(showLoading,500);
