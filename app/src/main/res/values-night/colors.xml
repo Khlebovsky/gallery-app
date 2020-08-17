@@ -7,5 +7,5 @@
     <color name="listSelector">#40ffffff</color>
     <color name="scrollbarColor">#5dffffff</color>
     <color name="navBarColor">#1A1A1A</color>
-    <color name="spinnerColor">#FFFFFF</color>
+    <color name="elementsColor">#FFFFFF</color>
 </resources>

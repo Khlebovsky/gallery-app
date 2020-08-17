@@ -9,7 +9,7 @@
     <color name="navBarColor">#000000</color>
     <color name="transparent">#00ffffff</color>
     <color name="white">#FFFFFF</color>
-    <color name="spinnerColor">#000000</color>
+    <color name="elementsColor">#000000</color>
     <color name="transparentBlack">#50000000</color>
     <color name="transpaentPrimary">#50AB0804</color>
 </resources>

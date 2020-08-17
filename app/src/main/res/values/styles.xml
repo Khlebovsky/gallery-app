@@ -17,5 +17,16 @@
 		<item name="colorAccent">@color/colorAccent</item>
 	</style>
 
+	<style name="ShareImageScreen" parent="Theme.AppCompat.DayNight.DarkActionBar">
+		<item name="colorPrimary">@color/colorPrimary</item>
+		<item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+		<item name="colorAccent">@color/colorAccent</item>
+	</style>
+
+	<style name="ToastStyle">
+		<item name="stTextColor">@color/elementsColor</item>
+		<item name="stColorBackground">@color/backgroundColor</item>
+	</style>
+
 	<style name="AlertDialogStyle" parent="Theme.AppCompat.DayNight.Dialog.Alert" />
 </resources>

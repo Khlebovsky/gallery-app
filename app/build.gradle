@@ -7,6 +7,7 @@ android {
     defaultConfig {
         applicationId "com.example.gallery"
         minSdkVersion 16
+        //noinspection OldTargetApi
         targetSdkVersion 29
         versionCode 1
         versionName "1.0"
@@ -26,6 +27,7 @@ dependencies {
     implementation fileTree(dir: "libs", include: ["*.jar"])
     implementation 'com.github.MikeOrtiz:TouchImageView:3.0.1'
     implementation("com.google.guava:guava:29.0-android")
+    implementation 'com.muddzdev:styleabletoast:2.2.3'
     implementation 'com.squareup.okhttp3:okhttp:3.12.0'
     implementation 'com.google.code.gson:gson:2.8.5'
     implementation 'com.google.android.gms:play-services-auth:18.1.0'

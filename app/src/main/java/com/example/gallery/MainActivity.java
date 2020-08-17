@@ -1,5 +1,6 @@
 package com.example.gallery;
 
+import android.app.Dialog;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -12,11 +13,7 @@ import android.graphics.Point;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkInfo;
-import android.os.Build;
-import android.os.Bundle;
-import android.os.Environment;
-import android.os.Handler;
-import android.os.Parcelable;
+import android.os.*;
 import android.util.Log;
 import android.util.LruCache;
 import android.view.Display;
@@ -75,6 +72,9 @@ public class MainActivity extends AppCompatActivity
 	public static volatile boolean isConnected;
 	@Nullable
 	public static SharedPreferences sharedPreferences;
+	public static Context context;
+	@Nullable
+	public static File linksFile;
 	static int width;
 	static int height;
 	static float imageWidth;
@@ -133,14 +133,7 @@ public class MainActivity extends AppCompatActivity
 		final int width=MainActivity.width;
 		@NonNull
 		final int height=MainActivity.height;
-		@NonNull
-		final int pixelsPerByte=4;
-		@NonNull
-		final float imageSize=imageWidth*imageWidth*pixelsPerByte;
-		quantity=(int)(((width/imageWidth)*(height/imageWidth))+((width/imageWidth)*2));
-		//noinspection unused
-		@NonNull
-		final int maxsize=(int)(imageSize*quantity);
+		quantity=(int)(((width/imageWidth)*(height/imageWidth))+((width/imageWidth)*4));
 		return quantity;
 	}
 
@@ -330,6 +323,7 @@ public class MainActivity extends AppCompatActivity
 		}
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
+		context=getBaseContext();
 		connectivityManager=(ConnectivityManager)getSystemService(CONNECTIVITY_SERVICE);
 		if(Build.VERSION.SDK_INT >= NETWORKCALLBACKAPI)
 		{
@@ -355,6 +349,9 @@ public class MainActivity extends AppCompatActivity
 		}
 		previews=new File(cache,"previews");
 		bytes=new File(cache,"bytes");
+		@NonNull
+		final File textfilesdir=new File(cache,"textfiles");
+		linksFile=new File(textfilesdir,"links.txt");
 		try
 		{
 			@Nullable
@@ -473,6 +470,8 @@ public class MainActivity extends AppCompatActivity
 						final String error=(ERROR_LIST.get(ImageAdapter.URLS.get(position)));
 						builder.setTitle("Ошибка");
 						builder.setMessage("Ошибка загрузки: \n"+error);
+						builder.setNegativeButton("Удалить",new AlertDialogOnClickListener(position));
+						builder.setNeutralButton("Перезагрузить",new AlertDialogOnClickListener(position));
 					}
 					builder.setPositiveButton("OK",new AlertDialogOnClickListener());
 					builder.show();
@@ -481,6 +480,7 @@ public class MainActivity extends AppCompatActivity
 				{
 					final Intent intent=new Intent(getApplicationContext(),FullImage.class);
 					intent.putExtra("image",ImageDownloader.FILE_NAMES.get(ImageAdapter.URLS.get(position)));
+					intent.putExtra("num",position);
 					intent.setPackage(getPackageName());
 					try
 					{
@@ -516,7 +516,7 @@ public class MainActivity extends AppCompatActivity
 	{
 		@NonNull
 		final MenuInflater inflater=getMenuInflater();
-		inflater.inflate(R.menu.main,menu);
+		inflater.inflate(R.menu.main_menu,menu);
 		final int nightMode=AppCompatDelegate.getDefaultNightMode();
 		if(nightMode==AppCompatDelegate.MODE_NIGHT_YES)
 		{
@@ -657,11 +657,7 @@ public class MainActivity extends AppCompatActivity
 	}
 
 	// TODO возможность поделиться картинкой - окно добавления (фулл картинки, сохранить + отмена) список + сервер
-	// TODO возможность удалить картинку список + сервер
-	// TODO написать скрипт для редактирования текстовика на сервере
-	// TODO доработать визуалку
 	// TODO возможность перезагрузить картинку при ошибке декодирования во время открытия
-	// TODO возможность удалить картинку с ошибкой из диалога
 	public void startLinksParser()
 	{
 		if(isConnected)
@@ -735,10 +731,36 @@ public class MainActivity extends AppCompatActivity
 
 	static class AlertDialogOnClickListener implements DialogInterface.OnClickListener
 	{
+		int position;
+
+		AlertDialogOnClickListener(int position)
+		{
+			this.position=position;
+		}
+
+		AlertDialogOnClickListener()
+		{
+		}
+
 		@Override
 		public void onClick(DialogInterface dialog,int which)
 		{
-			dialog.dismiss();
+			switch(which)
+			{
+				case Dialog.BUTTON_POSITIVE:
+					dialog.dismiss();
+					break;
+				case Dialog.BUTTON_NEGATIVE:
+					ClientServer.deleteImage(position);
+					break;
+				case DialogInterface.BUTTON_NEUTRAL:
+					ERROR_LIST.remove(ImageAdapter.URLS.get(position));
+					if(imageAdapter!=null)
+					{
+						imageAdapter.notifyDataSetChanged();
+					}
+					break;
+			}
 		}
 	}
 
@@ -746,7 +768,7 @@ public class MainActivity extends AppCompatActivity
 	{
 		ProgressDialog progressDialog;
 
-		LinksParser(ProgressDialog dialog)
+		LinksParser(@NonNull ProgressDialog dialog)
 		{
 			progressDialog=dialog;
 		}
@@ -757,11 +779,7 @@ public class MainActivity extends AppCompatActivity
 			try
 			{
 				@NonNull
-				final File textfilesdir=new File(cache,"textfiles");
-				@NonNull
-				final File linksfile=new File(textfilesdir,"links.txt");
-				@NonNull
-				final FileWriter downloader=new FileWriter(linksfile);
+				final FileWriter downloader=new FileWriter(linksFile);
 				@NonNull
 				final URL url=new URL(IMAGESURL);
 				try
@@ -774,8 +792,8 @@ public class MainActivity extends AppCompatActivity
 					final Response response=call.execute();
 					String line;
 					@NonNull
-					final BufferedReader in=new BufferedReader(response.body()!=null?response.body().charStream():null);
-					while((line=in.readLine())!=null)
+					final BufferedReader bufferedReader=new BufferedReader(response.body()!=null?response.body().charStream():null);
+					while((line=bufferedReader.readLine())!=null)
 					{
 						downloader.append(line).append("\n");
 						URLS.add(line);
@@ -791,8 +809,8 @@ public class MainActivity extends AppCompatActivity
 			{
 				e.printStackTrace();
 			}
-			progressDialog.dismiss();
 			updateGallery();
+			progressDialog.dismiss();
 		}
 	}
 

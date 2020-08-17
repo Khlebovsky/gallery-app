@@ -7,6 +7,10 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.util.Log;
+import android.view.ViewGroup;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import com.ortiz.touchview.TouchImageView;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -31,12 +35,6 @@ public final class ImageDownloader
 	public static final HashMap<String,String> FILE_NAMES=new HashMap<>();
 	@NonNull
 	public static final ArrayList<String> NO_INTERNET_LINKS=new ArrayList<>();
-	@NonNull
-	public static final String SCRIPT_URL="https://khlebovsky.ru/linkseditor.php";
-	@NonNull
-	public static final String SCRIPT_LOGIN="testinggalleryapprequest";
-	@NonNull
-	public static final String SCRIPT_PASSWORD="6e=Cmf&pUk7Lp{M@Gdq+";
 	@NonNull
 	static final ArrayList<String> URLS_IN_PROGRESS=new ArrayList<>();
 	@Nullable
@@ -71,6 +69,97 @@ public final class ImageDownloader
 				Log.d(TAG,String.valueOf(e));
 			}
 		}
+	}
+
+	// TODO доделать логику скачивания картинки
+	static void downloadImageFromSharing(final String url,final TouchImageView touchImageView,final Context context)
+	{
+		new Thread()
+		{
+			@Override
+			public void run()
+			{
+				try
+				{
+					@NonNull
+					final OkHttpClient client=new OkHttpClient.Builder().connectTimeout(5,TimeUnit.SECONDS).sslSocketFactory(ConnectionSettings.getTLSSocketFactory(),ConnectionSettings.getTrustManager()[0]).build();
+					@NonNull
+					final Call call=client.newCall(new Request.Builder().url(url).get().build());
+					@NonNull
+					final Response response=call.execute();
+					@NonNull
+					final ByteArrayOutputStream byteArrayOutputStream=new ByteArrayOutputStream();
+					@Nullable
+					InputStream inputStream=null;
+					if(response.code()==200||response.code()==201)
+					{
+						try
+						{
+							if(response.body()!=null)
+							{
+								inputStream=response.body().byteStream();
+							}
+							@NonNull
+							final byte[] buffer=new byte[4096];
+							@NonNull
+							int n;
+							if(inputStream!=null)
+							{
+								while((n=inputStream.read(buffer))>0)
+								{
+									byteArrayOutputStream.write(buffer,0,n);
+								}
+							}
+							@Nullable
+							final Bitmap originalBitmap=BitmapFactory.decodeByteArray(byteArrayOutputStream.toByteArray(),0,byteArrayOutputStream.toByteArray().length);
+							if(originalBitmap!=null)
+							{
+								//noinspection AnonymousInnerClassMayBeStatic
+								((SharedImage)context).runOnUiThread(new Runnable()
+								{
+									@Override
+									public void run()
+									{
+										touchImageView.setImageBitmap(originalBitmap);
+										touchImageView.setDoubleTapScale(3);
+										touchImageView.setMaxZoom(10);
+										touchImageView.setScaleType(ImageView.ScaleType.FIT_CENTER);
+										touchImageView.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
+									}
+								});
+							}
+							else
+							{
+								//noinspection AnonymousInnerClassMayBeStatic
+								((SharedImage)context).runOnUiThread(new Runnable()
+								{
+									@Override
+									public void run()
+									{
+										touchImageView.setImageResource(R.drawable.ic_error);
+									}
+								});
+							}
+						}
+						catch(Exception e)
+						{
+							e.printStackTrace();
+						}
+						finally
+						{
+							if(inputStream!=null)
+							{
+								inputStream.close();
+							}
+						}
+					}
+				}
+				catch(Exception e)
+				{
+					e.printStackTrace();
+				}
+			}
+		}.start();
 	}
 
 	static void downloadOrGetImageFromCache(final String url)

@@ -17,26 +17,41 @@
 		android:supportsRtl="true"
 		android:theme="@style/AppTheme"
 		android:usesCleartextTraffic="true">
+
 		<receiver
 			android:name=".ConnectivityReceiver"
 			android:enabled="true"
 			android:exported="false" />
+
 		<activity
 			android:name=".PreloaderActivity"
 			android:theme="@style/PreloaderTheme">
 			<intent-filter>
 				<action android:name="android.intent.action.MAIN" />
-
 				<category android:name="android.intent.category.LAUNCHER" />
 			</intent-filter>
 		</activity>
+
 		<activity
 			android:name=".MainActivity"
 			android:configChanges="mcc|mnc|screenLayout|touchscreen|smallestScreenSize|keyboard|keyboardHidden|navigation|orientation|screenSize|fontScale|layoutDirection|colorMode|locale|uiMode" />
+
 		<activity
 			android:name=".FullImage"
 			android:configChanges="mcc|mnc|screenLayout|touchscreen|smallestScreenSize|keyboard|keyboardHidden|navigation|orientation|screenSize|fontScale|layoutDirection|colorMode|locale|uiMode"
-			android:theme="@style/FullImageScreen"/>
+			android:theme="@style/FullImageScreen" />
+
+		<activity
+			android:name=".SharedImage"
+			android:configChanges="mcc|mnc|screenLayout|touchscreen|smallestScreenSize|keyboard|keyboardHidden|navigation|orientation|screenSize|fontScale|layoutDirection|colorMode|locale|uiMode"
+			android:theme="@style/ShareImageScreen">
+			<intent-filter>
+				<action android:name="android.intent.action.SEND" />
+				<data android:mimeType="text/plain" />
+				<category android:name="android.intent.category.DEFAULT" />
+			</intent-filter>
+		</activity>
+
 	</application>
 
 </manifest>

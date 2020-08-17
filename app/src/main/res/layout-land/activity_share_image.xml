@@ -6,12 +6,6 @@
 	android:layout_height="match_parent"
 	android:background="@color/backgroundColor"
 	android:orientation="horizontal"
-	tools:context=".SharedImage"
-	android:gravity="center">
-
-	<com.ortiz.touchview.TouchImageView
-		android:id="@+id/share_image_view"
-		android:layout_width="match_parent"
-		android:layout_height="match_parent" />
+	tools:context=".SharedImage">
 
 </LinearLayout>

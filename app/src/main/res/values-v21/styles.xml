@@ -23,14 +23,23 @@
 		<item name="actionBarStyle">@style/MyActionBar</item>
 	</style>
 
+	<style name="ShareImageScreen" parent="Theme.AppCompat.DayNight.DarkActionBar">
+		<item name="colorPrimary">@color/colorPrimary</item>
+		<item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+		<item name="colorAccent">@color/colorAccent</item>
+		<item name="android:navigationBarColor">@color/transparentBlack</item>
+		<item name="android:actionBarStyle">@style/MyActionBar</item>
+		<item name="actionBarStyle">@style/MyActionBar</item>
+	</style>
+
 	<style name="MyActionBar" parent="Widget.AppCompat.ActionBar">
 		<item name="android:background">@color/transparentBlack</item>
 		<item name="background">@color/transparentBlack</item>
 	</style>
 
 	<style name="AlertDialogStyle" parent="Theme.AppCompat.DayNight.Dialog.Alert">
-		<item name="colorAccent">@color/spinnerColor</item>
-		<item name="android:textColor">@color/spinnerColor</item>
+		<item name="colorAccent">@color/elementsColor</item>
+		<item name="android:textColor">@color/elementsColor</item>
 		<item name="android:background">@color/backgroundColor</item>
 	</style>
 </resources>

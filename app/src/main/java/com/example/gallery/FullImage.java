@@ -1,19 +1,18 @@
 package com.example.gallery;
 
-import android.annotation.SuppressLint;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.os.*;
+import android.os.AsyncTask;
+import android.os.Build;
+import android.os.Bundle;
 import android.util.Log;
 import android.view.*;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.Toast;
 import com.ortiz.touchview.TouchImageView;
 import java.io.File;
-import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.Map;
 import java.util.Timer;
@@ -23,65 +22,16 @@ import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
-import okhttp3.*;
 
 public class FullImage extends AppCompatActivity
 {
 	public static boolean isFullScreen;
 	static String url;
-	@NonNull
-	final RequestHandler REQUEST_HANDLER=new RequestHandler();
+	static int num;
 	@NonNull
 	private static final String TAG="FullImageScreen";
 	private static final int FULLSCREENAPI=19;
 	private static final int CUTOUTAPI=28;
-
-	// TODO доделать логику удаления
-	void deleteImage()
-	{
-		new Thread()
-		{
-			@Override
-			public void run()
-			{
-				try
-				{
-					@NonNull
-					final OkHttpClient client=new OkHttpClient.Builder().sslSocketFactory(ConnectionSettings.getTLSSocketFactory(),ConnectionSettings.getTrustManager()[0]).build();
-					@NonNull
-					final RequestBody requestBody=new FormBody.Builder().add("Login",ImageDownloader.SCRIPT_LOGIN).add("Password",ImageDownloader.SCRIPT_PASSWORD).add("Delete",url).build();
-					@NonNull
-					final Call call=client.newCall(new Request.Builder().url(ImageDownloader.SCRIPT_URL).post(requestBody).build());
-					call.enqueue(new Callback()
-					{
-						@Override
-						public void onFailure(@NonNull Call call,@NonNull IOException e)
-						{
-							@NonNull
-							final Message message=REQUEST_HANDLER.obtainMessage(0,"error");
-							REQUEST_HANDLER.sendMessage(message);
-						}
-
-						@Override
-						public void onResponse(@NonNull Call call,@NonNull Response response)
-						{
-							@NonNull
-							Message message=REQUEST_HANDLER.obtainMessage(0,"success");
-							REQUEST_HANDLER.sendMessage(message);
-							ImageAdapter.URLS.remove(url);
-                            message=ImageDownloader.GALLERY_HANDLER.obtainMessage();
-							ImageDownloader.GALLERY_HANDLER.sendMessage(message);
-						}
-					});
-					call.execute();
-				}
-				catch(Exception e)
-				{
-					e.printStackTrace();
-				}
-			}
-		}.start();
-	}
 
 	@RequiresApi(api=Build.VERSION_CODES.KITKAT)
 	void hideSystemUI()
@@ -167,6 +117,7 @@ public class FullImage extends AppCompatActivity
 		//noinspection ConstantConditions
 		@NonNull
 		final String image=intent.getExtras().getString("image");
+		num=(int)intent.getExtras().get("num");
 		if(image!=null)
 		{
 			@NonNull
@@ -247,7 +198,7 @@ public class FullImage extends AppCompatActivity
 	{
 		@NonNull
 		final MenuInflater inflater=getMenuInflater();
-		inflater.inflate(R.menu.secondmenu,menu);
+		inflater.inflate(R.menu.full_image_menu,menu);
 		return true;
 	}
 
@@ -260,7 +211,8 @@ public class FullImage extends AppCompatActivity
 				finish();
 				return true;
 			case R.id.deleteImage:
-				deleteImage();
+				ClientServer.deleteImage(num);
+				finish();
 				return true;
 		}
 		return super.onOptionsItemSelected(item);
@@ -371,32 +323,6 @@ public class FullImage extends AppCompatActivity
 		{
 			dialog.dismiss();
 			finish();
-		}
-	}
-
-	@SuppressLint("HandlerLeak")
-	class RequestHandler extends Handler
-	{
-		RequestHandler()
-		{
-			super(Looper.getMainLooper());
-		}
-
-		@Override
-		public void handleMessage(@NonNull Message msg)
-		{
-			super.handleMessage(msg);
-			@NonNull
-			final String result=(String)msg.obj;
-			if("error".equals(result))
-			{
-				Toast.makeText(getBaseContext(),"Произошла ошибка. Попробуйте ещё раз",Toast.LENGTH_SHORT).show();
-			}
-			else if("success".equals(result))
-			{
-				Toast.makeText(getBaseContext(),"Картинка удалена: \n"+url,Toast.LENGTH_SHORT).show();
-				finish();
-			}
 		}
 	}
 }
