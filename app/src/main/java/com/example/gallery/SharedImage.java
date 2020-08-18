@@ -1,115 +1,72 @@
 package com.example.gallery;
 
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
-import android.os.Build;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.WindowManager;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import com.ortiz.touchview.TouchImageView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.annotation.RequiresApi;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 public class SharedImage extends AppCompatActivity
 {
-	public static boolean isFullScreen;
-	public static TouchImageView touchImageView;
+	public static ImageView imageView;
 	static Context context;
-	@NonNull
-	private static final String TAG="ShareImage";
-	private static final int FULLSCREENAPI=19;
-	private static final int CUTOUTAPI=28;
 	@SuppressWarnings("FieldCanBeLocal")
-	private static String url;
+	static String url;
+	@SuppressWarnings("unused")
+	@NonNull
+	private static final String TAG="SharedImage";
 
-	// TODO доделать логику добавления картинки
 	void handleSendText(Intent intent)
 	{
+		@NonNull
+		final AlertDialog.Builder builder=new AlertDialog.Builder(SharedImage.this,R.style.AlertDialogStyle);
+		builder.setCancelable(false);
+		builder.setTitle("Ошибка");
+		builder.setPositiveButton("OK",new AlertDialogOnClickListener());
 		@Nullable
 		final String imageUrl=intent.getStringExtra(Intent.EXTRA_TEXT);
 		if(imageUrl!=null)
 		{
 			url=imageUrl;
 			setTitle(url);
-			Log.d(TAG,imageUrl);
-			ImageDownloader.downloadImageFromSharing(imageUrl,touchImageView,context);
+			ImageDownloader.downloadImageFromSharing(imageUrl,imageView,context,builder);
+		}
+		else
+		{
+			builder.setMessage("Ошибка: \nНевалидная ссылка");
+			builder.show();
+			imageView.setImageResource(R.drawable.ic_error);
 		}
 	}
 
-	@RequiresApi(api=Build.VERSION_CODES.KITKAT)
-	void hideSystemUI()
-	{
-		@NonNull
-		final View decorView=getWindow().getDecorView();
-		decorView.setSystemUiVisibility(
-			View.SYSTEM_UI_FLAG_IMMERSIVE|View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_LAYOUT_STABLE|View.SYSTEM_UI_FLAG_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_FULLSCREEN|View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
-	}
-
-	@RequiresApi(api=Build.VERSION_CODES.P)
-	void initDisplayCutout()
-	{
-		@NonNull
-		final WindowManager.LayoutParams cutoutAttributes=getWindow().getAttributes();
-		cutoutAttributes.layoutInDisplayCutoutMode=WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
-	}
-
-	@RequiresApi(api=Build.VERSION_CODES.KITKAT)
-	void initFlags()
-	{
-		@NonNull
-		final View decorView=getWindow().getDecorView();
-		decorView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE|View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
-		getWindow()
-			.setFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS|WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION,WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS|WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION);
-	}
-
+	// TODO исправить обработку входящих ссылок
+	// TODO исправить цвет кнопок до API21
+	// TODO исправить обрезание картинки навигацинными кнопками
 	@Override
 	protected void onCreate(Bundle savedInstanceState)
 	{
-		if(Build.VERSION.SDK_INT >= FULLSCREENAPI)
-		{
-			initFlags();
-		}
-		if(Build.VERSION.SDK_INT >= CUTOUTAPI)
-		{
-			initDisplayCutout();
-		}
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_share_image);
-		touchImageView=findViewById(R.id.share_image_view);
-		if(Build.VERSION.SDK_INT >= FULLSCREENAPI)
-		{
-			touchImageView.setOnClickListener(new View.OnClickListener()
-			{
-				@Override
-				public void onClick(View view)
-				{
-					if(isFullScreen)
-					{
-						showSystemUI();
-						isFullScreen=false;
-					}
-					else
-					{
-						hideSystemUI();
-						isFullScreen=true;
-					}
-				}
-			});
-		}
+		MainActivity.initCacheDirs(getBaseContext());
+		imageView=findViewById(R.id.share_image_view);
+		@NonNull
+		final ImageButton cancelButton=(ImageButton)findViewById(R.id.cancel_button);
+		@NonNull
+		final ImageButton applyButton=(ImageButton)findViewById(R.id.apply_button);
 		final int size=getResources().getDimensionPixelSize(R.dimen.preloaderSize);
-		touchImageView.setMaxZoom(1);
-		touchImageView.setLayoutParams(new LinearLayout.LayoutParams(size,size));
-		touchImageView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
-		touchImageView.setImageResource(R.drawable.progress);
+		imageView.setLayoutParams(new LinearLayout.LayoutParams(size,size));
+		imageView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+		imageView.setImageResource(R.drawable.progress);
 		context=SharedImage.this;
 		@NonNull
 		final Intent intent=getIntent();
@@ -121,6 +78,32 @@ public class SharedImage extends AppCompatActivity
 		{
 			handleSendText(intent);
 		}
+		cancelButton.setOnClickListener(new View.OnClickListener()
+		{
+			@Override
+			public void onClick(View view)
+			{
+				finish();
+			}
+		});
+		applyButton.setOnClickListener(new View.OnClickListener()
+		{
+			@Override
+			public void onClick(View view)
+			{
+				ClientServer.addImage(url);
+				@NonNull
+				final Intent intent=new Intent(SharedImage.this,MainActivity.class);
+				try
+				{
+					startActivity(intent);
+				}
+				catch(Exception e)
+				{
+					e.printStackTrace();
+				}
+			}
+		});
 	}
 
 	@Override
@@ -137,17 +120,26 @@ public class SharedImage extends AppCompatActivity
 	{
 		if(item.getItemId()==R.id.home)
 		{
-			finish();
+			final Intent intent=new Intent(SharedImage.this,MainActivity.class);
+			try
+			{
+				startActivity(intent);
+			}
+			catch(Exception e)
+			{
+				e.printStackTrace();
+			}
 			return true;
 		}
 		return super.onOptionsItemSelected(item);
 	}
 
-	@RequiresApi(api=Build.VERSION_CODES.KITKAT)
-	void showSystemUI()
+	class AlertDialogOnClickListener implements DialogInterface.OnClickListener
 	{
-		@NonNull
-		final View decorView=getWindow().getDecorView();
-		decorView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE|View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
+		@Override
+		public void onClick(DialogInterface dialogInterface,int i)
+		{
+			finish();
+		}
 	}
 }

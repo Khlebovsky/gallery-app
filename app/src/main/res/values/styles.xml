@@ -23,6 +23,11 @@
 		<item name="colorAccent">@color/colorAccent</item>
 	</style>
 
+	<style name="ImageButton" parent="Widget.AppCompat.ImageButton">
+		<item name="background">@color/colorPrimary</item>
+		<item name="android:background">@color/colorPrimary</item>
+	</style>
+
 	<style name="ToastStyle">
 		<item name="stTextColor">@color/elementsColor</item>
 		<item name="stColorBackground">@color/backgroundColor</item>

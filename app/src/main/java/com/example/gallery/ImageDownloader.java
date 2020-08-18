@@ -1,5 +1,6 @@
 package com.example.gallery;
 
+import androidx.appcompat.app.AlertDialog;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -10,7 +11,6 @@ import android.util.Log;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import com.ortiz.touchview.TouchImageView;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -71,8 +71,7 @@ public final class ImageDownloader
 		}
 	}
 
-	// TODO доделать логику скачивания картинки
-	static void downloadImageFromSharing(final String url,final TouchImageView touchImageView,final Context context)
+	static void downloadImageFromSharing(final String url,final ImageView imageView,final Context context,final AlertDialog.Builder builder)
 	{
 		new Thread()
 		{
@@ -110,9 +109,14 @@ public final class ImageDownloader
 									byteArrayOutputStream.write(buffer,0,n);
 								}
 							}
-							@Nullable
-							final Bitmap originalBitmap=BitmapFactory.decodeByteArray(byteArrayOutputStream.toByteArray(),0,byteArrayOutputStream.toByteArray().length);
-							if(originalBitmap!=null)
+							@NonNull
+							final BitmapFactory.Options options=new BitmapFactory.Options();
+							options.inJustDecodeBounds=true;
+							BitmapFactory.decodeByteArray(byteArrayOutputStream.toByteArray(),0,byteArrayOutputStream.toByteArray().length,options);
+							@NonNull
+							final int originalBitmapWidth=options.outWidth;
+							Log.d(TAG,String.valueOf(originalBitmapWidth));
+							if(originalBitmapWidth==-1)
 							{
 								//noinspection AnonymousInnerClassMayBeStatic
 								((SharedImage)context).runOnUiThread(new Runnable()
@@ -120,29 +124,59 @@ public final class ImageDownloader
 									@Override
 									public void run()
 									{
-										touchImageView.setImageBitmap(originalBitmap);
-										touchImageView.setDoubleTapScale(3);
-										touchImageView.setMaxZoom(10);
-										touchImageView.setScaleType(ImageView.ScaleType.FIT_CENTER);
-										touchImageView.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
+										builder.setMessage("Ошибка загрузки: \nThe file is not a picture");
+										builder.show();
+										imageView.setImageResource(R.drawable.ic_error);
 									}
 								});
 							}
 							else
 							{
-								//noinspection AnonymousInnerClassMayBeStatic
-								((SharedImage)context).runOnUiThread(new Runnable()
+								@Nullable
+								final Bitmap originalBitmap=BitmapFactory.decodeByteArray(byteArrayOutputStream.toByteArray(),0,byteArrayOutputStream.toByteArray().length);
+								if(originalBitmap!=null)
 								{
-									@Override
-									public void run()
+									//noinspection AnonymousInnerClassMayBeStatic
+									((SharedImage)context).runOnUiThread(new Runnable()
 									{
-										touchImageView.setImageResource(R.drawable.ic_error);
-									}
-								});
+										@Override
+										public void run()
+										{
+											imageView.setImageBitmap(originalBitmap);
+											imageView.setScaleType(ImageView.ScaleType.FIT_CENTER);
+											imageView.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
+										}
+									});
+								}
+								else
+								{
+									//noinspection AnonymousInnerClassMayBeStatic
+									((SharedImage)context).runOnUiThread(new Runnable()
+									{
+										@Override
+										public void run()
+										{
+											builder.setMessage("Ошибка загрузки: \nDecoding error");
+											builder.show();
+											imageView.setImageResource(R.drawable.ic_error);
+										}
+									});
+								}
 							}
 						}
 						catch(Exception e)
 						{
+							//noinspection AnonymousInnerClassMayBeStatic
+							((SharedImage)context).runOnUiThread(new Runnable()
+							{
+								@Override
+								public void run()
+								{
+									builder.setMessage("Ошибка загрузки: \nConnection error");
+									builder.show();
+									imageView.setImageResource(R.drawable.ic_error);
+								}
+							});
 							e.printStackTrace();
 						}
 						finally
@@ -153,9 +187,34 @@ public final class ImageDownloader
 							}
 						}
 					}
+					else
+					{
+						//noinspection AnonymousInnerClassMayBeStatic
+						((SharedImage)context).runOnUiThread(new Runnable()
+						{
+							@Override
+							public void run()
+							{
+								builder.setMessage("Ошибка загрузки: \nResponse code: "+response.code());
+								builder.show();
+								imageView.setImageResource(R.drawable.ic_error);
+							}
+						});
+					}
 				}
 				catch(Exception e)
 				{
+					//noinspection AnonymousInnerClassMayBeStatic
+					((SharedImage)context).runOnUiThread(new Runnable()
+					{
+						@Override
+						public void run()
+						{
+							builder.setMessage("Ошибка загрузки: \nUnknown error");
+							builder.show();
+							imageView.setImageResource(R.drawable.ic_error);
+						}
+					});
 					e.printStackTrace();
 				}
 			}
@@ -192,9 +251,6 @@ public final class ImageDownloader
 					{
 						addBitmapToMemoryCache(url,bitmap);
 						FILE_NAMES.put(url,urlHashMD5);
-						@NonNull
-						final Message message=GALLERY_HANDLER.obtainMessage();
-						GALLERY_HANDLER.sendMessage(message);
 					}
 					else
 					{
@@ -203,6 +259,9 @@ public final class ImageDownloader
 					}
 					URLS_IN_PROGRESS.remove(url);
 					ThreadsCounter.decreaseThreadsCounter();
+					@NonNull
+					final Message message=GALLERY_HANDLER.obtainMessage();
+					GALLERY_HANDLER.sendMessage(message);
 				}
 			}.start();
 		}
@@ -238,7 +297,8 @@ public final class ImageDownloader
 						try
 						{
 							@NonNull
-							final OkHttpClient client=new OkHttpClient.Builder().connectTimeout(5,TimeUnit.SECONDS).sslSocketFactory(ConnectionSettings.getTLSSocketFactory(),ConnectionSettings.getTrustManager()[0]).build();
+							final OkHttpClient client=new OkHttpClient.Builder().callTimeout(60,TimeUnit.SECONDS).connectTimeout(5,TimeUnit.SECONDS)
+								.sslSocketFactory(ConnectionSettings.getTLSSocketFactory(),ConnectionSettings.getTrustManager()[0]).build();
 							@NonNull
 							final Call call=client.newCall(new Request.Builder().url(url).get().build());
 							@NonNull
@@ -446,8 +506,7 @@ public final class ImageDownloader
 	public static Bitmap getImageBitmap(final String url)
 	{
 		@Nullable
-		final Bitmap bitmap;
-		bitmap=getBitmapFromMemoryCache(url);
+		final Bitmap bitmap=getBitmapFromMemoryCache(url);
 		if(bitmap!=null)
 		{
 			return bitmap;

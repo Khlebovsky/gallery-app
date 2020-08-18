@@ -3,7 +3,7 @@
 		android:color="?android:colorControlHighlight">
 	<item android:id="@android:id/mask">
 		<shape android:shape="rectangle">
-			<solid android:color="@color/listSelector" />
+			<solid android:color="@color/colorPrimary" />
 		</shape>
 	</item>
 </ripple>

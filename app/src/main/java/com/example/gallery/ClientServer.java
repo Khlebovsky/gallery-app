@@ -38,8 +38,32 @@ public final class ClientServer
 	{
 	}
 
-	// TODO проблема синхронизации между устройствами (?)
-	// TODO протестировать удаление на всех устройствах
+	public static void addImage(final String url)
+	{
+		new Thread()
+		{
+			@Override
+			public void run()
+			{
+				try
+				{
+					@NonNull
+					final OkHttpClient client=new OkHttpClient.Builder().sslSocketFactory(ConnectionSettings.getTLSSocketFactory(),ConnectionSettings.getTrustManager()[0]).build();
+					final RequestBody requestBody=new FormBody.Builder().add("Login",SCRIPT_LOGIN).add("Password",SCRIPT_PASSWORD).add("Task",ADD_TASK).add("Add",url).build();
+					@NonNull
+					final Call call=client.newCall(new Request.Builder().url(SCRIPT_URL).post(requestBody).build());
+					call.enqueue(new AddImageRequestCallback(url));
+					call.execute();
+				}
+				catch(Exception e)
+				{
+					e.printStackTrace();
+				}
+			}
+		}.start();
+	}
+
+	// TODO протестировать удаление и добавление на всех устройствах
 	public static void deleteImage(final int numToDelete)
 	{
 		new Thread()
@@ -65,6 +89,64 @@ public final class ClientServer
 				}
 			}
 		}.start();
+	}
+
+	private static final class AddImageRequestCallback implements Callback
+	{
+		private final String url;
+
+		AddImageRequestCallback(String url)
+		{
+			this.url=url;
+		}
+
+		@Override
+		public void onFailure(@NonNull Call call,@NonNull IOException e)
+		{
+			@NonNull
+			final Message message=REQUEST_HANDLER.obtainMessage(0,"error");
+			REQUEST_HANDLER.sendMessage(message);
+		}
+
+		@Override
+		public void onResponse(@NonNull Call call,@NonNull Response response)
+		{
+			if(MainActivity.linksFile!=null)
+			{
+				@NonNull
+				final ArrayList<String> LinksFileString=new ArrayList<>();
+				try
+				{
+					@NonNull
+					final BufferedReader bufferedReader=new BufferedReader(new FileReader(MainActivity.linksFile));
+					String string;
+					while((string=bufferedReader.readLine())!=null)
+					{
+						LinksFileString.add(string);
+					}
+					LinksFileString.add(url);
+					bufferedReader.close();
+					@NonNull
+					final BufferedWriter bufferedWriter=new BufferedWriter(new FileWriter(MainActivity.linksFile));
+					for(final String str : LinksFileString)
+					{
+						bufferedWriter.write(str+'\n');
+					}
+					bufferedWriter.flush();
+					bufferedReader.close();
+				}
+				catch(Exception e)
+				{
+					e.printStackTrace();
+				}
+			}
+			@NonNull
+			Message message=REQUEST_HANDLER.obtainMessage(0,1,1,url);
+			REQUEST_HANDLER.sendMessage(message);
+			ImageAdapter.URLS.add(url);
+			message=ImageDownloader.GALLERY_HANDLER.obtainMessage();
+			ImageDownloader.GALLERY_HANDLER.sendMessage(message);
+		}
 	}
 
 	private static final class DeleteImageRequestCallback implements Callback
@@ -119,7 +201,7 @@ public final class ClientServer
 				}
 			}
 			@NonNull
-			Message message=REQUEST_HANDLER.obtainMessage(0,ImageAdapter.URLS.get(numToDelete));
+			Message message=REQUEST_HANDLER.obtainMessage(0,2,2,ImageAdapter.URLS.get(numToDelete));
 			REQUEST_HANDLER.sendMessage(message);
 			ImageAdapter.URLS.remove(numToDelete);
 			message=ImageDownloader.GALLERY_HANDLER.obtainMessage();
@@ -147,7 +229,16 @@ public final class ClientServer
 			}
 			else
 			{
-				StyleableToast.makeText(MainActivity.context,"Картинка удалена: \n"+result,Toast.LENGTH_SHORT,R.style.ToastStyle).show();
+				final int status=msg.arg1;
+				switch(status)
+				{
+					case 1:
+						StyleableToast.makeText(MainActivity.context,"Картинка добавлена: \n"+result,Toast.LENGTH_SHORT,R.style.ToastStyle).show();
+						break;
+					case 2:
+						StyleableToast.makeText(MainActivity.context,"Картинка удалена: \n"+result,Toast.LENGTH_SHORT,R.style.ToastStyle).show();
+						break;
+				}
 			}
 		}
 	}

@@ -47,8 +47,9 @@
 			android:theme="@style/ShareImageScreen">
 			<intent-filter>
 				<action android:name="android.intent.action.SEND" />
-				<data android:mimeType="text/plain" />
 				<category android:name="android.intent.category.DEFAULT" />
+				<category android:name="android.intent.category.BROWSABLE" />
+				<data android:mimeType="text/plain" />
 			</intent-filter>
 		</activity>
 

@@ -19,22 +19,32 @@
 		<item name="colorPrimaryDark">@color/colorPrimaryDark</item>
 		<item name="colorAccent">@color/colorAccent</item>
 		<item name="android:navigationBarColor">@color/transparentBlack</item>
-		<item name="android:actionBarStyle">@style/MyActionBar</item>
-		<item name="actionBarStyle">@style/MyActionBar</item>
+		<item name="android:actionBarStyle">@style/TransparentActionBar</item>
+		<item name="actionBarStyle">@style/TransparentActionBar</item>
 	</style>
 
 	<style name="ShareImageScreen" parent="Theme.AppCompat.DayNight.DarkActionBar">
 		<item name="colorPrimary">@color/colorPrimary</item>
 		<item name="colorPrimaryDark">@color/colorPrimaryDark</item>
 		<item name="colorAccent">@color/colorAccent</item>
-		<item name="android:navigationBarColor">@color/transparentBlack</item>
-		<item name="android:actionBarStyle">@style/MyActionBar</item>
-		<item name="actionBarStyle">@style/MyActionBar</item>
+		<item name="android:navigationBarColor">@color/navBarColor</item>
+		<item name="android:actionBarStyle">@style/ColorActionBar</item>
+		<item name="actionBarStyle">@style/ColorActionBar</item>
 	</style>
 
-	<style name="MyActionBar" parent="Widget.AppCompat.ActionBar">
+	<style name="TransparentActionBar" parent="Widget.AppCompat.ActionBar">
 		<item name="android:background">@color/transparentBlack</item>
 		<item name="background">@color/transparentBlack</item>
+	</style>
+
+	<style name="ColorActionBar" parent="Widget.AppCompat.ActionBar">
+		<item name="android:background">@color/colorPrimary</item>
+		<item name="background">@color/colorPrimary</item>
+	</style>
+
+	<style name="ImageButton" parent="Widget.AppCompat.ImageButton">
+		<item name="backgroundTint">@color/colorPrimary</item>
+		<item name="android:backgroundTint">@color/colorPrimary</item>
 	</style>
 
 	<style name="AlertDialogStyle" parent="Theme.AppCompat.DayNight.Dialog.Alert">

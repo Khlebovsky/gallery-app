@@ -137,6 +137,26 @@ public class MainActivity extends AppCompatActivity
 		return quantity;
 	}
 
+	public static void initCacheDirs(Context context)
+	{
+		try
+		{
+			if(Environment.isExternalStorageEmulated()||!Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState())||(cache=context.getExternalCacheDir())==null||!cache.canWrite())
+			{
+				cache=context.getCacheDir();
+			}
+		}
+		catch(Throwable e)
+		{
+			cache=context.getCacheDir();
+		}
+		previews=new File(cache,"previews");
+		bytes=new File(cache,"bytes");
+		@NonNull
+		final File textfilesdir=new File(cache,"textfiles");
+		linksFile=new File(textfilesdir,"links.txt");
+	}
+
 	public boolean isInternet()
 	{
 		@NonNull
@@ -336,22 +356,7 @@ public class MainActivity extends AppCompatActivity
 		isConnected=isInternet();
 		imageWidth=getResources().getDimensionPixelSize(R.dimen.imageWidth);
 		gridView=findViewById(R.id.GridView);
-		try
-		{
-			if(Environment.isExternalStorageEmulated()||!Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState())||(cache=getBaseContext().getExternalCacheDir())==null||!cache.canWrite())
-			{
-				cache=getBaseContext().getCacheDir();
-			}
-		}
-		catch(Throwable e)
-		{
-			cache=getBaseContext().getCacheDir();
-		}
-		previews=new File(cache,"previews");
-		bytes=new File(cache,"bytes");
-		@NonNull
-		final File textfilesdir=new File(cache,"textfiles");
-		linksFile=new File(textfilesdir,"links.txt");
+		initCacheDirs(context);
 		try
 		{
 			@Nullable
@@ -421,15 +426,22 @@ public class MainActivity extends AppCompatActivity
 		{
 			try
 			{
-				@Nullable
-				final File[] files=previews.listFiles();
-				if(files==null||files.length==0)
+				if(previews!=null)
 				{
-					startLinksParser();
+					@Nullable
+					final File[] files=previews.listFiles();
+					if(files==null||files.length==0)
+					{
+						startLinksParser();
+					}
+					else
+					{
+						updateGallery();
+					}
 				}
 				else
 				{
-					updateGallery();
+					startLinksParser();
 				}
 			}
 			catch(Exception e)
@@ -656,8 +668,6 @@ public class MainActivity extends AppCompatActivity
 		}
 	}
 
-	// TODO возможность поделиться картинкой - окно добавления (фулл картинки, сохранить + отмена) список + сервер
-	// TODO возможность перезагрузить картинку при ошибке декодирования во время открытия
 	public void startLinksParser()
 	{
 		if(isConnected)

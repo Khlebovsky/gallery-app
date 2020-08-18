@@ -19,7 +19,7 @@ public class ImageAdapter extends BaseAdapter
 	@NonNull
 	public static final ArrayList<String> URLS=new ArrayList<>();
 	@NonNull
-	Context mContext;
+	Context context;
 	@SuppressWarnings("unused")
 	@NonNull
 	private static final String TAG="ImageAdapter";
@@ -32,7 +32,7 @@ public class ImageAdapter extends BaseAdapter
 
 	public ImageAdapter(@NonNull Context c)
 	{
-		mContext=c;
+		context=c;
 		URLS.clear();
 		@NonNull
 		final File textfilesdir=new File(MainActivity.cache,"textfiles");
@@ -84,11 +84,11 @@ public class ImageAdapter extends BaseAdapter
 		{
 			imageView=new ImageView(viewGroup.getContext());
 			@NonNull
-			final float scale=mContext.getResources().getDisplayMetrics().density;
+			final float scale=context.getResources().getDisplayMetrics().density;
 			@NonNull
 			final int margindp=(int)(4*scale);
 			@NonNull
-			final int height=mContext.getResources().getDimensionPixelSize(R.dimen.imageWidth);
+			final int height=context.getResources().getDimensionPixelSize(R.dimen.imageWidth);
 			imageView.setLayoutParams(new GridView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,height));
 			imageView.setPadding(margindp,margindp,margindp,margindp);
 		}
