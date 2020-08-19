@@ -8,7 +8,6 @@ import android.widget.BaseAdapter;
 import android.widget.GridView;
 import android.widget.ImageView;
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.FileReader;
 import java.util.ArrayList;
 import androidx.annotation.NonNull;
@@ -30,24 +29,21 @@ public class ImageAdapter extends BaseAdapter
 	@NonNull
 	private static final String LOADING_ERROR="progress error";
 
-	public ImageAdapter(@NonNull Context c)
+	public ImageAdapter(@NonNull Context context)
 	{
-		context=c;
+		this.context=context;
 		URLS.clear();
-		@NonNull
-		final File textfilesdir=new File(MainActivity.cache,"textfiles");
-		@NonNull
-		final File linksfile=new File(textfilesdir,"links.txt");
 		try
 		{
 			@NonNull
-			final BufferedReader bufferedReader=new BufferedReader(new FileReader(linksfile));
+			final BufferedReader bufferedReader=new BufferedReader(new FileReader(MainActivity.linksFile));
 			String url;
 			while((url=bufferedReader.readLine())!=null)
 			{
 				URLS.add(url);
 				MainActivity.LINKS_STATUS.put(url,"progress");
 			}
+			bufferedReader.close();
 		}
 		catch(Exception e)
 		{

@@ -63,7 +63,6 @@ public final class ClientServer
 		}.start();
 	}
 
-	// TODO протестировать удаление и добавление на всех устройствах
 	public static void deleteImage(final int numToDelete)
 	{
 		new Thread()

@@ -49,14 +49,8 @@ public class SharedImage extends AppCompatActivity
 		}
 	}
 
-	// TODO исправить обработку входящих ссылок
-	// TODO исправить цвет кнопок до API21
-	// TODO исправить обрезание картинки навигацинными кнопками
-	@Override
-	protected void onCreate(Bundle savedInstanceState)
+	void initStatic()
 	{
-		super.onCreate(savedInstanceState);
-		setContentView(R.layout.activity_share_image);
 		MainActivity.initCacheDirs(getBaseContext());
 		imageView=findViewById(R.id.share_image_view);
 		@NonNull
@@ -68,16 +62,6 @@ public class SharedImage extends AppCompatActivity
 		imageView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
 		imageView.setImageResource(R.drawable.progress);
 		context=SharedImage.this;
-		@NonNull
-		final Intent intent=getIntent();
-		@Nullable
-		final String action=intent.getAction();
-		@Nullable
-		final String type=intent.getType();
-		if(Intent.ACTION_SEND.equals(action)&&"text/plain".equals(type))
-		{
-			handleSendText(intent);
-		}
 		cancelButton.setOnClickListener(new View.OnClickListener()
 		{
 			@Override
@@ -94,6 +78,7 @@ public class SharedImage extends AppCompatActivity
 				ClientServer.addImage(url);
 				@NonNull
 				final Intent intent=new Intent(SharedImage.this,MainActivity.class);
+				intent.setPackage(getPackageName());
 				try
 				{
 					startActivity(intent);
@@ -101,9 +86,33 @@ public class SharedImage extends AppCompatActivity
 				catch(Exception e)
 				{
 					e.printStackTrace();
+					finish();
 				}
 			}
 		});
+	}
+
+	// TODO исправить обработку входящих ссылок
+	// TODO исправить цвет кнопок до API21
+	// TODO исправить обрезание картинки навигацинными кнопками
+	@Override
+	protected void onCreate(Bundle savedInstanceState)
+	{
+		MainActivity.sharedPreferences=getSharedPreferences("Gallery",MODE_PRIVATE);
+		MainActivity.initTheme();
+		super.onCreate(savedInstanceState);
+		setContentView(R.layout.activity_share_image);
+		initStatic();
+		@NonNull
+		final Intent intent=getIntent();
+		@Nullable
+		final String action=intent.getAction();
+		@Nullable
+		final String type=intent.getType();
+		if(Intent.ACTION_SEND.equals(action)&&"text/plain".equals(type))
+		{
+			handleSendText(intent);
+		}
 	}
 
 	@Override
@@ -121,6 +130,7 @@ public class SharedImage extends AppCompatActivity
 		if(item.getItemId()==R.id.home)
 		{
 			final Intent intent=new Intent(SharedImage.this,MainActivity.class);
+			intent.setPackage(getPackageName());
 			try
 			{
 				startActivity(intent);

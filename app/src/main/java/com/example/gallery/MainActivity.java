@@ -13,7 +13,11 @@ import android.graphics.Point;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkInfo;
-import android.os.*;
+import android.os.Build;
+import android.os.Bundle;
+import android.os.Environment;
+import android.os.Handler;
+import android.os.Parcelable;
 import android.util.Log;
 import android.util.LruCache;
 import android.view.Display;
@@ -23,8 +27,6 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.GridView;
-import com.google.android.gms.common.GooglePlayServicesNotAvailableException;
-import com.google.android.gms.common.GooglePlayServicesRepairableException;
 import com.google.android.gms.security.ProviderInstaller;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -91,6 +93,7 @@ public class MainActivity extends AppCompatActivity
 	private static final String IMAGESURL="https://khlebovsky.ru/images.txt";
 	private static final int NETWORKCALLBACKAPI=24;
 	private static final int ALERTDIALOGSTYLEAPI=21;
+	private static final int GOOGLESERVICESAPI=19;
 	private static NetworkCallback networkCallback;
 	private static ConnectivityReceiver connectivityReceiver;
 
@@ -127,14 +130,36 @@ public class MainActivity extends AppCompatActivity
 		ImageAdapter.URLS.clear();
 	}
 
-	public static int getMemorySize()
+	static void getErrorLinksFromSharedPrefs()
 	{
-		@NonNull
-		final int width=MainActivity.width;
-		@NonNull
-		final int height=MainActivity.height;
-		quantity=(int)(((width/imageWidth)*(height/imageWidth))+((width/imageWidth)*4));
-		return quantity;
+		try
+		{
+			@Nullable
+			final String string=sharedPreferences!=null?sharedPreferences.getString("LinksStatusJson",null):null;
+			if(string!=null)
+			{
+				@NonNull
+				final Type type=new TypeToken<HashMap<String,String>>()
+				{
+				}.getType();
+				final Gson gson=new Gson();
+				@Nullable
+				final HashMap<String,String> TEMP=gson.fromJson(string,type);
+				if(TEMP!=null&&!TEMP.isEmpty())
+				{
+					//noinspection rawtypes
+					for(final Map.Entry entry : TEMP.entrySet())
+					{
+						ERROR_LIST.put(entry.getKey().toString(),entry.getValue().toString());
+					}
+				}
+			}
+		}
+		catch(Exception e)
+		{
+			e.printStackTrace();
+			Log.d(MAIN,String.valueOf(e));
+		}
 	}
 
 	public static void initCacheDirs(Context context)
@@ -157,10 +182,111 @@ public class MainActivity extends AppCompatActivity
 		linksFile=new File(textfilesdir,"links.txt");
 	}
 
-	public boolean isInternet()
+	void initGooglePlayServices()
 	{
+		if(Build.VERSION.SDK_INT<=GOOGLESERVICESAPI)
+		{
+			try
+			{
+				ProviderInstaller.installIfNeeded(getBaseContext());
+			}
+			catch(Exception e)
+			{
+				e.printStackTrace();
+			}
+		}
+	}
+
+	static void initMemoryCache()
+	{
+		if(memoryCache==null)
+		{
+			@NonNull
+			final int width=MainActivity.width;
+			@NonNull
+			final int height=MainActivity.height;
+			quantity=(int)(((width/imageWidth)*(height/imageWidth))+((width/imageWidth)*4));
+			memoryCache=new LruCache<String,Bitmap>(quantity)
+			{
+				@Override
+				protected int sizeOf(String key,Bitmap value)
+				{
+					return 1;
+				}
+			};
+		}
+	}
+
+	void initNetworkStatusListener()
+	{
+		if(Build.VERSION.SDK_INT >= NETWORKCALLBACKAPI)
+		{
+			networkCallback=new NetworkCallback();
+		}
+		else
+		{
+			connectivityReceiver=new ConnectivityReceiver();
+		}
+	}
+
+	void initSharedPrefs()
+	{
+		if(sharedPreferences==null)
+		{
+			sharedPreferences=getSharedPreferences("Gallery",MODE_PRIVATE);
+		}
+	}
+
+	void initStatic()
+	{
+		context=getBaseContext();
+		imageWidth=getResources().getDimensionPixelSize(R.dimen.imageWidth);
+		gridView=findViewById(R.id.GridView);
+		connectivityManager=(ConnectivityManager)getSystemService(CONNECTIVITY_SERVICE);
+		isConnected=isInternet();
 		@NonNull
-		final ConnectivityManager connectivityManager=(ConnectivityManager)getSystemService(Context.CONNECTIVITY_SERVICE);
+		final Display display=getWindowManager().getDefaultDisplay();
+		@NonNull
+		final Point size=new Point();
+		display.getSize(size);
+		width=size.x;
+		height=size.y;
+		@NonNull
+		final int num=(int)(width/imageWidth);
+		if(gridView!=null)
+		{
+			gridView.setColumnWidth((int)imageWidth);
+			gridView.setNumColumns(num);
+		}
+	}
+
+	static void initTheme()
+	{
+		if(!isThemeChanged&&sharedPreferences!=null)
+		{
+			try
+			{
+				@NonNull
+				final boolean isNightMode=sharedPreferences.getBoolean("isNightMode",false);
+				if(isNightMode)
+				{
+					AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
+				}
+				else
+				{
+					AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
+				}
+			}
+			catch(Exception e)
+			{
+				e.printStackTrace();
+			}
+			isThemeChanged=true;
+		}
+	}
+
+	public static boolean isInternet()
+	{
 		@Nullable
 		final NetworkInfo wifiInfo=connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
 		@NonNull
@@ -319,108 +445,16 @@ public class MainActivity extends AppCompatActivity
 	@Override
 	protected void onCreate(Bundle savedInstanceState)
 	{
-		sharedPreferences=getSharedPreferences("Gallery",MODE_PRIVATE);
-		if(!isThemeChanged)
-		{
-			try
-			{
-				@NonNull
-				final boolean isNightMode=sharedPreferences.getBoolean("isNightMode",false);
-				if(isNightMode)
-				{
-					AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
-				}
-				else
-				{
-					AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
-				}
-			}
-			catch(Exception e)
-			{
-				e.printStackTrace();
-			}
-			isThemeChanged=true;
-		}
+		initSharedPrefs();
+		initTheme();
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
-		context=getBaseContext();
-		connectivityManager=(ConnectivityManager)getSystemService(CONNECTIVITY_SERVICE);
-		if(Build.VERSION.SDK_INT >= NETWORKCALLBACKAPI)
-		{
-			networkCallback=new NetworkCallback();
-		}
-		else
-		{
-			connectivityReceiver=new ConnectivityReceiver();
-		}
-		isConnected=isInternet();
-		imageWidth=getResources().getDimensionPixelSize(R.dimen.imageWidth);
-		gridView=findViewById(R.id.GridView);
+		initStatic();
+		initNetworkStatusListener();
 		initCacheDirs(context);
-		try
-		{
-			@Nullable
-			final String string=sharedPreferences!=null?sharedPreferences.getString("LinksStatusJson",null):null;
-			//noinspection AnonymousInnerClassMayBeStatic
-			@NonNull
-			final Type type=new TypeToken<HashMap<String,String>>()
-			{
-			}.getType();
-			final Gson gson=new Gson();
-			@Nullable
-			final HashMap<String,String> TEMP=gson.fromJson(string,type);
-			if(TEMP!=null&&!TEMP.isEmpty())
-			{
-				//noinspection rawtypes
-				for(final Map.Entry entry : TEMP.entrySet())
-				{
-					ERROR_LIST.put(entry.getKey().toString(),entry.getValue().toString());
-				}
-			}
-		}
-		catch(Exception e)
-		{
-			e.printStackTrace();
-			Log.d(MAIN,String.valueOf(e));
-		}
-		@NonNull
-		final Display display=getWindowManager().getDefaultDisplay();
-		@NonNull
-		final Point size=new Point();
-		display.getSize(size);
-		width=size.x;
-		height=size.y;
-		@NonNull
-		final int num=(int)(width/imageWidth);
-		if(memoryCache==null)
-		{
-			//noinspection AnonymousInnerClassMayBeStatic
-			memoryCache=new LruCache<String,Bitmap>(getMemorySize())
-			{
-				@Override
-				protected int sizeOf(String key,Bitmap value)
-				{
-					return 1;
-				}
-			};
-		}
-		if(gridView!=null)
-		{
-			gridView.setColumnWidth((int)imageWidth);
-			gridView.setNumColumns(num);
-		}
-		try
-		{
-			ProviderInstaller.installIfNeeded(getBaseContext());
-		}
-		catch(GooglePlayServicesRepairableException e)
-		{
-			e.printStackTrace();
-		}
-		catch(GooglePlayServicesNotAvailableException e)
-		{
-			e.printStackTrace();
-		}
+		getErrorLinksFromSharedPrefs();
+		initMemoryCache();
+		initGooglePlayServices();
 		ImageDownloader.initStatic(getBaseContext());
 		if(isConnected)
 		{
@@ -455,72 +489,75 @@ public class MainActivity extends AppCompatActivity
 			alertNoInternet();
 			updateGallery();
 		}
-		gridView.setOnItemClickListener(new AdapterView.OnItemClickListener()
+		if(gridView!=null)
 		{
-			@Override
-			public void onItemClick(final AdapterView<?> parent,View v,int position,long id)
+			gridView.setOnItemClickListener(new AdapterView.OnItemClickListener()
 			{
-				parent.setClickable(false);
-				parent.setEnabled(false);
-				if(LINKS_STATUS.containsKey(ImageAdapter.URLS.get(position)))
+				@Override
+				public void onItemClick(final AdapterView<?> parent,View v,int position,long id)
 				{
-					@NonNull
-					final AlertDialog.Builder builder=new AlertDialog.Builder(MainActivity.this,R.style.AlertDialogStyle);
-					if(ImageDownloader.NO_INTERNET_LINKS.contains(ImageAdapter.URLS.get(position)))
-					{
-						builder.setTitle("Ошибка");
-						builder.setMessage("Ошибка загрузки: \nНет подключения к интернету");
-					}
-					else if("progress".equals(LINKS_STATUS.get(ImageAdapter.URLS.get(position))))
-					{
-						builder.setTitle("Загрузка");
-						builder.setMessage("Картинка загружается: \nПопробуйте позже");
-					}
-					else
-					{
-						@Nullable
-						final String error=(ERROR_LIST.get(ImageAdapter.URLS.get(position)));
-						builder.setTitle("Ошибка");
-						builder.setMessage("Ошибка загрузки: \n"+error);
-						builder.setNegativeButton("Удалить",new AlertDialogOnClickListener(position));
-						builder.setNeutralButton("Перезагрузить",new AlertDialogOnClickListener(position));
-					}
-					builder.setPositiveButton("OK",new AlertDialogOnClickListener());
-					builder.show();
-				}
-				else
-				{
-					final Intent intent=new Intent(getApplicationContext(),FullImage.class);
-					intent.putExtra("image",ImageDownloader.FILE_NAMES.get(ImageAdapter.URLS.get(position)));
-					intent.putExtra("num",position);
-					intent.setPackage(getPackageName());
-					try
-					{
-						startActivity(intent);
-					}
-					catch(Throwable e)
+					parent.setClickable(false);
+					parent.setEnabled(false);
+					if(LINKS_STATUS.containsKey(ImageAdapter.URLS.get(position)))
 					{
 						@NonNull
 						final AlertDialog.Builder builder=new AlertDialog.Builder(MainActivity.this,R.style.AlertDialogStyle);
-						builder.setTitle("Ошибка");
-						builder.setMessage("Ошибка: \nПроизошла непредвиденная ошибка");
+						if(ImageDownloader.NO_INTERNET_LINKS.contains(ImageAdapter.URLS.get(position)))
+						{
+							builder.setTitle("Ошибка");
+							builder.setMessage("Ошибка загрузки: \nНет подключения к интернету");
+						}
+						else if("progress".equals(LINKS_STATUS.get(ImageAdapter.URLS.get(position))))
+						{
+							builder.setTitle("Загрузка");
+							builder.setMessage("Картинка загружается: \nПопробуйте позже");
+						}
+						else
+						{
+							@Nullable
+							final String error=(ERROR_LIST.get(ImageAdapter.URLS.get(position)));
+							builder.setTitle("Ошибка");
+							builder.setMessage("Ошибка загрузки: \n"+error);
+							builder.setNegativeButton("Удалить",new AlertDialogOnClickListener(position));
+							builder.setNeutralButton("Перезагрузить",new AlertDialogOnClickListener(position));
+						}
 						builder.setPositiveButton("OK",new AlertDialogOnClickListener());
 						builder.show();
-						e.printStackTrace();
 					}
-				}
-				//noinspection AnonymousInnerClassMayBeStatic
-				new Handler().postDelayed(new Runnable()
-				{
-					@Override
-					public void run()
+					else
 					{
-						parent.setEnabled(true);
-						parent.setClickable(true);
+						final Intent intent=new Intent(MainActivity.this,FullImage.class);
+						intent.putExtra("URL",ImageAdapter.URLS.get(position));
+						intent.putExtra("Num",position);
+						intent.setPackage(getPackageName());
+						try
+						{
+							startActivity(intent);
+						}
+						catch(Throwable e)
+						{
+							@NonNull
+							final AlertDialog.Builder builder=new AlertDialog.Builder(MainActivity.this,R.style.AlertDialogStyle);
+							builder.setTitle("Ошибка");
+							builder.setMessage("Ошибка: \nПроизошла непредвиденная ошибка");
+							builder.setPositiveButton("OK",new AlertDialogOnClickListener());
+							builder.show();
+							e.printStackTrace();
+						}
 					}
-				},200);
-			}
-		});
+					//noinspection AnonymousInnerClassMayBeStatic
+					new Handler().postDelayed(new Runnable()
+					{
+						@Override
+						public void run()
+						{
+							parent.setEnabled(true);
+							parent.setClickable(true);
+						}
+					},200);
+				}
+			});
+		}
 	}
 
 	@Override

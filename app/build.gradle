@@ -26,7 +26,6 @@ android {
 dependencies {
     implementation fileTree(dir: "libs", include: ["*.jar"])
     implementation 'com.github.MikeOrtiz:TouchImageView:3.0.1'
-    implementation("com.google.guava:guava:29.0-android")
     implementation 'com.muddzdev:styleabletoast:2.2.3'
     implementation 'com.squareup.okhttp3:okhttp:3.12.0'
     implementation 'com.google.code.gson:gson:2.8.5'

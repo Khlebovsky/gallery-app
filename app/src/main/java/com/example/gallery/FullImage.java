@@ -7,14 +7,11 @@ import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.*;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import com.ortiz.touchview.TouchImageView;
 import java.io.File;
-import java.lang.ref.WeakReference;
-import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 import androidx.annotation.NonNull;
@@ -25,21 +22,29 @@ import androidx.appcompat.app.AppCompatActivity;
 
 public class FullImage extends AppCompatActivity
 {
-	public static boolean isFullScreen;
-	static String url;
+	static boolean isFullScreen;
 	static int num;
+	static GestureDetector gestureDetector;
+	static TouchImageView touchImageView;
+	@SuppressWarnings("unused")
 	@NonNull
 	private static final String TAG="FullImageScreen";
-	private static final int FULLSCREENAPI=19;
 	private static final int CUTOUTAPI=28;
+	private static final int IMPROVEDFULLSCREENAPI=19;
 
-	@RequiresApi(api=Build.VERSION_CODES.KITKAT)
 	void hideSystemUI()
 	{
 		@NonNull
 		final View decorView=getWindow().getDecorView();
-		decorView.setSystemUiVisibility(
-			View.SYSTEM_UI_FLAG_IMMERSIVE|View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_LAYOUT_STABLE|View.SYSTEM_UI_FLAG_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_FULLSCREEN|View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
+		if(Build.VERSION.SDK_INT >= IMPROVEDFULLSCREENAPI)
+		{
+			decorView.setSystemUiVisibility(
+				View.SYSTEM_UI_FLAG_IMMERSIVE|View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_LAYOUT_STABLE|View.SYSTEM_UI_FLAG_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_FULLSCREEN|View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
+		}
+		else
+		{
+			decorView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE|View.SYSTEM_UI_FLAG_FULLSCREEN|View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
+		}
 	}
 
 	@RequiresApi(api=Build.VERSION_CODES.P)
@@ -50,17 +55,19 @@ public class FullImage extends AppCompatActivity
 		cutoutAttributes.layoutInDisplayCutoutMode=WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
 	}
 
-	@RequiresApi(api=Build.VERSION_CODES.KITKAT)
 	void initFlags()
 	{
 		@NonNull
 		final View decorView=getWindow().getDecorView();
 		decorView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE|View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
-		getWindow()
-			.setFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS|WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION,WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS|WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION);
+		if(Build.VERSION.SDK_INT >= IMPROVEDFULLSCREENAPI)
+		{
+			getWindow()
+				.setFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS|WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION,WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS|WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION);
+		}
 	}
 
-	private GestureDetector initGestureDetector()
+	GestureDetector initGestureDetector()
 	{
 		//noinspection deprecation
 		return new GestureDetector(new GestureDetector.SimpleOnGestureListener()
@@ -78,7 +85,11 @@ public class FullImage extends AppCompatActivity
 					}
 					else if(swipeDetector.isSwipeUp(e1,e2,velocityY))
 					{
-						finish();
+						if(touchImageView.getCurrentZoom()==1)
+						{
+							finish();
+						}
+						return true;
 					}
 					else if(swipeDetector.isSwipeLeft(e1,e2,velocityX))
 					{
@@ -94,7 +105,40 @@ public class FullImage extends AppCompatActivity
 				}
 				return false;
 			}
+
+			@Override
+			public boolean onSingleTapConfirmed(MotionEvent e)
+			{
+				if(isFullScreen)
+				{
+					showSystemUI();
+					isFullScreen=false;
+				}
+				else
+				{
+					hideSystemUI();
+					isFullScreen=true;
+				}
+				return super.onSingleTapConfirmed(e);
+			}
 		});
+	}
+
+	void initSettings()
+	{
+		initFlags();
+		if(Build.VERSION.SDK_INT >= CUTOUTAPI)
+		{
+			initDisplayCutout();
+		}
+	}
+
+	void loadImage(final File path)
+	{
+		touchImageView.setOnTouchListener(new ImageOnTouchListener());
+		@NonNull
+		final BitmapWorkerTask task=new BitmapWorkerTask(touchImageView,String.valueOf(path));
+		task.execute(1);
 	}
 
 	// TODO исправить обрезание меню на телефонах с вырезами
@@ -102,89 +146,39 @@ public class FullImage extends AppCompatActivity
 	@Override
 	protected void onCreate(Bundle savedInstanceState)
 	{
-		if(Build.VERSION.SDK_INT >= FULLSCREENAPI)
-		{
-			initFlags();
-		}
-		if(Build.VERSION.SDK_INT >= CUTOUTAPI)
-		{
-			initDisplayCutout();
-		}
+		initSettings();
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_full_image);
+		touchImageView=findViewById(R.id.touch_image_view);
+		gestureDetector=initGestureDetector();
 		@NonNull
 		final Intent intent=getIntent();
 		//noinspection ConstantConditions
-		@NonNull
-		final String image=intent.getExtras().getString("image");
-		num=(int)intent.getExtras().get("num");
-		if(image!=null)
+		@Nullable
+		final String url=intent.getExtras().getString("URL");
+		num=intent.getExtras().getInt("Num");
+		setTitle(url);
+		if(url!=null)
 		{
-			@NonNull
-			final File path=new File(MainActivity.bytes,image);
-			try
+			@Nullable
+			final String fileName=ImageDownloader.FILE_NAMES.containsKey(url)?ImageDownloader.FILE_NAMES.get(url):null;
+			if(fileName!=null)
 			{
-				@NonNull
-				final GestureDetector gestureDetector=initGestureDetector();
-				@Nullable
-				String title=null;
-				if(ImageDownloader.FILE_NAMES.containsValue(image))
+				try
 				{
-					//noinspection rawtypes
-					for(final Map.Entry entry : ImageDownloader.FILE_NAMES.entrySet())
-					{
-						if(image.equals(entry.getValue()))
-						{
-							url=(String)entry.getKey();
-							title=(String)entry.getKey();
-						}
-					}
+					@NonNull
+					final File path=new File(MainActivity.bytes,fileName);
+					loadImage(path);
 				}
-				setTitle(title);
-				@NonNull
-				final TouchImageView touchImageView=findViewById(R.id.touch_image_view);
-				//noinspection AnonymousInnerClassMayBeStatic
-				touchImageView.setOnTouchListener(new View.OnTouchListener()
+				catch(Exception e)
 				{
-					@Override
-					public boolean onTouch(View view,MotionEvent motionEvent)
-					{
-						if(touchImageView.getCurrentZoom()==1)
-						{
-							return gestureDetector.onTouchEvent(motionEvent);
-						}
-						return false;
-					}
-				});
-				if(Build.VERSION.SDK_INT >= FULLSCREENAPI)
-				{
-					touchImageView.setOnClickListener(new View.OnClickListener()
-					{
-						@Override
-						public void onClick(View view)
-						{
-							if(isFullScreen)
-							{
-								showSystemUI();
-								isFullScreen=false;
-							}
-							else
-							{
-								hideSystemUI();
-								isFullScreen=true;
-							}
-						}
-					});
+					showErrorAlertDialog();
+					e.printStackTrace();
 				}
-				@NonNull
-				final BitmapWorkerTask task=new BitmapWorkerTask(touchImageView,String.valueOf(path));
-				task.execute(1);
 			}
-			catch(Exception e)
+			else
 			{
 				showErrorAlertDialog();
-				e.printStackTrace();
-				Log.d(TAG,String.valueOf(e));
 			}
 		}
 		else
@@ -229,33 +223,72 @@ public class FullImage extends AppCompatActivity
 		builder.show();
 	}
 
-	@RequiresApi(api=Build.VERSION_CODES.KITKAT)
 	void showSystemUI()
 	{
 		@NonNull
 		final View decorView=getWindow().getDecorView();
-		decorView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE|View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
+		if(Build.VERSION.SDK_INT >= IMPROVEDFULLSCREENAPI)
+		{
+			decorView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE|View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
+		}
+		else
+		{
+			decorView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE|View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
+		}
 	}
 
 	class BitmapWorkerTask extends AsyncTask<Integer,Void,Bitmap>
 	{
 		@NonNull
-		final WeakReference<TouchImageView> touchImageViewWeakReference;
-		@NonNull
 		Timer timer=new Timer();
+		@Nullable
+		TouchImageView touchImageView;
 		@NonNull
-		private String image;
+		private String path;
 
-		BitmapWorkerTask(TouchImageView touchImageView,@NonNull String path)
+		BitmapWorkerTask(@NonNull TouchImageView touchImageView,@NonNull String path)
 		{
-			touchImageViewWeakReference=new WeakReference<>(touchImageView);
-			image=path;
+			this.touchImageView=touchImageView;
+			this.path=path;
 		}
 
 		@Override
 		protected Bitmap doInBackground(Integer... params)
 		{
-			return BitmapFactory.decodeFile(image);
+			@Nullable
+			Bitmap bitmap=null;
+			try
+			{
+				@NonNull
+				final BitmapFactory.Options options=new BitmapFactory.Options();
+				options.inJustDecodeBounds=true;
+				BitmapFactory.decodeFile(path,options);
+				@NonNull
+				int originalBitmapWidth=options.outWidth;
+				@NonNull
+				int originalBitmapHeight=options.outHeight;
+				int reductionRatio=0;
+				if(originalBitmapWidth>ImageDownloader.MAX_BITMAP_SIZE||originalBitmapHeight>ImageDownloader.MAX_BITMAP_SIZE)
+				{
+					reductionRatio=1;
+					while(originalBitmapWidth>ImageDownloader.MAX_BITMAP_SIZE||originalBitmapHeight>ImageDownloader.MAX_BITMAP_SIZE)
+					{
+						reductionRatio<<=1;
+						originalBitmapWidth/=2;
+						originalBitmapHeight/=2;
+					}
+				}
+				@NonNull
+				final BitmapFactory.Options bitmapOptions=new BitmapFactory.Options();
+				bitmapOptions.inSampleSize=reductionRatio;
+				bitmap=BitmapFactory.decodeFile(path,bitmapOptions);
+			}
+			catch(Exception e)
+			{
+				e.printStackTrace();
+				showErrorAlertDialog();
+			}
+			return bitmap;
 		}
 
 		@Override
@@ -264,8 +297,6 @@ public class FullImage extends AppCompatActivity
 			timer.cancel();
 			if(bitmap!=null)
 			{
-				@NonNull
-				final TouchImageView touchImageView=touchImageViewWeakReference.get();
 				if(touchImageView!=null)
 				{
 					touchImageView.setImageBitmap(bitmap);
@@ -288,9 +319,16 @@ public class FullImage extends AppCompatActivity
 		@Override
 		protected void onPreExecute()
 		{
-			@NonNull
-			final ShowLoading showLoading=new ShowLoading();
-			timer.schedule(showLoading,500);
+			if(touchImageView!=null)
+			{
+				@NonNull
+				final ShowLoading showLoading=new ShowLoading();
+				timer.schedule(showLoading,500);
+			}
+			else
+			{
+				showErrorAlertDialog();
+			}
 		}
 
 		class ShowLoading extends TimerTask
@@ -298,18 +336,19 @@ public class FullImage extends AppCompatActivity
 			@Override
 			public void run()
 			{
-				@NonNull
-				final TouchImageView touchImageView=touchImageViewWeakReference.get();
 				runOnUiThread(new Runnable()
 				{
 					@Override
 					public void run()
 					{
-						final int size=getResources().getDimensionPixelSize(R.dimen.preloaderSize);
-						touchImageView.setMaxZoom(1);
-						touchImageView.setLayoutParams(new LinearLayout.LayoutParams(size,size));
-						touchImageView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
-						touchImageView.setImageResource(R.drawable.progress);
+						if(touchImageView!=null)
+						{
+							final int size=getResources().getDimensionPixelSize(R.dimen.preloaderSize);
+							touchImageView.setMaxZoom(1);
+							touchImageView.setLayoutParams(new LinearLayout.LayoutParams(size,size));
+							touchImageView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+							touchImageView.setImageResource(R.drawable.progress);
+						}
 					}
 				});
 			}
@@ -323,6 +362,15 @@ public class FullImage extends AppCompatActivity
 		{
 			dialog.dismiss();
 			finish();
+		}
+	}
+
+	static class ImageOnTouchListener implements View.OnTouchListener
+	{
+		@Override
+		public boolean onTouch(View view,MotionEvent motionEvent)
+		{
+			return gestureDetector.onTouchEvent(motionEvent);
 		}
 	}
 }

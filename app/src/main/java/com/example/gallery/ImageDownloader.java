@@ -1,6 +1,5 @@
 package com.example.gallery;
 
-import androidx.appcompat.app.AlertDialog;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -22,6 +21,7 @@ import java.util.HashMap;
 import java.util.concurrent.TimeUnit;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import okhttp3.Call;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -35,6 +35,7 @@ public final class ImageDownloader
 	public static final HashMap<String,String> FILE_NAMES=new HashMap<>();
 	@NonNull
 	public static final ArrayList<String> NO_INTERNET_LINKS=new ArrayList<>();
+	public static final int MAX_BITMAP_SIZE=4096;
 	@NonNull
 	static final ArrayList<String> URLS_IN_PROGRESS=new ArrayList<>();
 	@Nullable
@@ -114,8 +115,9 @@ public final class ImageDownloader
 							options.inJustDecodeBounds=true;
 							BitmapFactory.decodeByteArray(byteArrayOutputStream.toByteArray(),0,byteArrayOutputStream.toByteArray().length,options);
 							@NonNull
-							final int originalBitmapWidth=options.outWidth;
-							Log.d(TAG,String.valueOf(originalBitmapWidth));
+							int originalBitmapWidth=options.outWidth;
+							@NonNull
+							int originalBitmapHeight=options.outHeight;
 							if(originalBitmapWidth==-1)
 							{
 								//noinspection AnonymousInnerClassMayBeStatic
@@ -132,8 +134,23 @@ public final class ImageDownloader
 							}
 							else
 							{
+								int reductionRatio=0;
+								if(originalBitmapWidth>MAX_BITMAP_SIZE||originalBitmapHeight>MAX_BITMAP_SIZE)
+								{
+									reductionRatio=1;
+									while(originalBitmapWidth>MAX_BITMAP_SIZE||originalBitmapHeight>MAX_BITMAP_SIZE)
+									{
+										reductionRatio<<=1;
+										originalBitmapWidth/=2;
+										originalBitmapHeight/=2;
+									}
+								}
+								@NonNull
+								final BitmapFactory.Options bitmapOptions=new BitmapFactory.Options();
+								bitmapOptions.inSampleSize=reductionRatio;
 								@Nullable
-								final Bitmap originalBitmap=BitmapFactory.decodeByteArray(byteArrayOutputStream.toByteArray(),0,byteArrayOutputStream.toByteArray().length);
+								final Bitmap originalBitmap=BitmapFactory.decodeByteArray(byteArrayOutputStream.toByteArray(),0,byteArrayOutputStream.toByteArray().length,bitmapOptions);
+								Log.d(TAG,String.valueOf(reductionRatio));
 								if(originalBitmap!=null)
 								{
 									//noinspection AnonymousInnerClassMayBeStatic
@@ -297,8 +314,7 @@ public final class ImageDownloader
 						try
 						{
 							@NonNull
-							final OkHttpClient client=new OkHttpClient.Builder().callTimeout(60,TimeUnit.SECONDS).connectTimeout(5,TimeUnit.SECONDS)
-								.sslSocketFactory(ConnectionSettings.getTLSSocketFactory(),ConnectionSettings.getTrustManager()[0]).build();
+							final OkHttpClient client=new OkHttpClient.Builder().connectTimeout(5,TimeUnit.SECONDS).sslSocketFactory(ConnectionSettings.getTLSSocketFactory(),ConnectionSettings.getTrustManager()[0]).build();
 							@NonNull
 							final Call call=client.newCall(new Request.Builder().url(url).get().build());
 							@NonNull
@@ -520,9 +536,9 @@ public final class ImageDownloader
 		return null;
 	}
 
-	public static void initStatic(@NonNull Context mContext)
+	public static void initStatic(@NonNull Context context)
 	{
-		imageWidth=mContext.getResources().getDimensionPixelSize(R.dimen.imageWidth);
+		imageWidth=context.getResources().getDimensionPixelSize(R.dimen.imageWidth);
 		//noinspection SuspiciousNameCombination
 		imageHeight=imageWidth;
 		try

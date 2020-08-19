@@ -12,8 +12,16 @@ public class PreloaderActivity extends AppCompatActivity
 	{
 		super.onCreate(savedInstanceState);
 		@NonNull
-		final Intent intent=new Intent(this,MainActivity.class);
-		startActivity(intent);
+		final Intent intent=new Intent(PreloaderActivity.this,MainActivity.class);
+		intent.setPackage(getPackageName());
+		try
+		{
+			startActivity(intent);
+		}
+		catch(Exception e)
+		{
+			e.printStackTrace();
+		}
 		finish();
 	}
 }
