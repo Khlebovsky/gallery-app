@@ -1,32 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout
+<LinearLayout
 	xmlns:android="http://schemas.android.com/apk/res/android"
 	xmlns:app="http://schemas.android.com/apk/res-auto"
 	xmlns:tools="http://schemas.android.com/tools"
+	android:id="@+id/container"
 	android:layout_width="match_parent"
 	android:layout_height="match_parent"
 	android:background="@color/backgroundColor"
-	android:orientation="vertical"
-	tools:context=".SharedImage">
+	android:orientation="vertical">
 
-	<LinearLayout
+	<FrameLayout
+		android:id="@+id/fl_content"
 		android:layout_width="match_parent"
-		android:layout_height="match_parent"
-		android:layout_alignParentTop="true"
-		android:layout_marginTop="0dp"
-		android:gravity="center">
+		android:layout_height="0dp"
+		android:layout_weight="1">
 
-		<ImageView
-			android:id="@+id/share_image_view"
+		<LinearLayout
 			android:layout_width="match_parent"
 			android:layout_height="match_parent"
-			android:layout_gravity="center" />
-	</LinearLayout>
+			android:gravity="center"
+			tools:ignore="UselessParent">
+
+			<ImageView
+				android:id="@+id/share_image_view"
+				android:layout_width="match_parent"
+				android:layout_height="match_parent"
+				android:layout_gravity="center" />
+		</LinearLayout>
+
+	</FrameLayout>
 
 	<com.google.android.material.bottomnavigation.BottomNavigationView
 		android:layout_width="match_parent"
-		android:layout_height="wrap_content"
-		android:layout_alignParentBottom="true">
+		android:layout_height="wrap_content">
 
 		<LinearLayout
 			android:layout_width="match_parent"
@@ -39,7 +45,7 @@
 				android:layout_height="wrap_content"
 				android:layout_margin="4dp"
 				android:layout_weight="1"
-				android:theme="@style/ImageButton"
+				android:background="@drawable/image_button_selector"
 				app:srcCompat="@drawable/ic_cancel" />
 
 			<ImageButton
@@ -48,10 +54,10 @@
 				android:layout_height="wrap_content"
 				android:layout_margin="4dp"
 				android:layout_weight="1"
-				android:theme="@style/ImageButton"
+				android:background="@drawable/image_button_selector"
 				app:srcCompat="@drawable/ic_apply" />
 		</LinearLayout>
 
 	</com.google.android.material.bottomnavigation.BottomNavigationView>
 
-</RelativeLayout>
+</LinearLayout>

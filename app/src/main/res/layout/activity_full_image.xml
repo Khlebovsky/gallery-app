@@ -8,10 +8,12 @@
 	android:background="@color/backgroundColor"
 	android:gravity="center"
 	android:orientation="vertical"
-	tools:context=".FullImage">
+	tools:context=".FullImage"
+	tools:ignore="Overdraw">
 
 	<com.ortiz.touchview.TouchImageView
 		android:id="@+id/touch_image_view"
 		android:layout_width="match_parent"
 		android:layout_height="match_parent" />
+
 </LinearLayout>

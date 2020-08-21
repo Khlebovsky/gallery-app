@@ -2,12 +2,12 @@ package com.example.gallery;
 
 import android.view.MotionEvent;
 
-public class SwipeDetector
+public final class SwipeDetector
 {
 	private static final int SWIPE_MIN_DISTANCE=120;
 	private static final int SWIPE_THRESHOLD_VELOCITY=200;
-	private int swipe_distance;
-	private int swipe_velocity;
+	private final int swipe_distance;
+	private final int swipe_velocity;
 
 	@SuppressWarnings("unused")
 	public SwipeDetector(int distance,int velocity)

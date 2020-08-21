@@ -20,13 +20,12 @@ public class SharedImage extends AppCompatActivity
 {
 	public static ImageView imageView;
 	static Context context;
-	@SuppressWarnings("FieldCanBeLocal")
 	static String url;
 	@SuppressWarnings("unused")
 	@NonNull
 	private static final String TAG="SharedImage";
 
-	void handleSendText(Intent intent)
+	void handleSendText(@NonNull Intent intent)
 	{
 		@NonNull
 		final AlertDialog.Builder builder=new AlertDialog.Builder(SharedImage.this,R.style.AlertDialogStyle);
@@ -54,9 +53,9 @@ public class SharedImage extends AppCompatActivity
 		MainActivity.initCacheDirs(getBaseContext());
 		imageView=findViewById(R.id.share_image_view);
 		@NonNull
-		final ImageButton cancelButton=(ImageButton)findViewById(R.id.cancel_button);
+		final ImageButton cancelButton=findViewById(R.id.cancel_button);
 		@NonNull
-		final ImageButton applyButton=(ImageButton)findViewById(R.id.apply_button);
+		final ImageButton applyButton=findViewById(R.id.apply_button);
 		final int size=getResources().getDimensionPixelSize(R.dimen.preloaderSize);
 		imageView.setLayoutParams(new LinearLayout.LayoutParams(size,size));
 		imageView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
@@ -93,15 +92,13 @@ public class SharedImage extends AppCompatActivity
 	}
 
 	// TODO исправить обработку входящих ссылок
-	// TODO исправить цвет кнопок до API21
-	// TODO исправить обрезание картинки навигацинными кнопками
 	@Override
 	protected void onCreate(Bundle savedInstanceState)
 	{
 		MainActivity.sharedPreferences=getSharedPreferences("Gallery",MODE_PRIVATE);
 		MainActivity.initTheme();
 		super.onCreate(savedInstanceState);
-		setContentView(R.layout.activity_share_image);
+		setContentView(R.layout.activity_shared_image);
 		initStatic();
 		@NonNull
 		final Intent intent=getIntent();

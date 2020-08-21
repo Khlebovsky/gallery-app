@@ -18,7 +18,6 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Parcelable;
-import android.util.Log;
 import android.util.LruCache;
 import android.view.Display;
 import android.view.Menu;
@@ -85,8 +84,10 @@ public class MainActivity extends AppCompatActivity
 	Parcelable state;
 	@Nullable
 	Bundle bundleGridViewState;
+	@SuppressWarnings("unused")
 	@NonNull
 	private static final String TAG="LinksParserThread";
+	@SuppressWarnings("unused")
 	@NonNull
 	private static final String MAIN="MainThread";
 	@NonNull
@@ -142,6 +143,7 @@ public class MainActivity extends AppCompatActivity
 				final Type type=new TypeToken<HashMap<String,String>>()
 				{
 				}.getType();
+				@NonNull
 				final Gson gson=new Gson();
 				@Nullable
 				final HashMap<String,String> TEMP=gson.fromJson(string,type);
@@ -158,11 +160,10 @@ public class MainActivity extends AppCompatActivity
 		catch(Exception e)
 		{
 			e.printStackTrace();
-			Log.d(MAIN,String.valueOf(e));
 		}
 	}
 
-	public static void initCacheDirs(Context context)
+	public static void initCacheDirs(@NonNull Context context)
 	{
 		try
 		{
@@ -239,6 +240,7 @@ public class MainActivity extends AppCompatActivity
 
 	void initStatic()
 	{
+		setTitle(getResources().getString(R.string.app_name));
 		context=getBaseContext();
 		imageWidth=getResources().getDimensionPixelSize(R.dimen.imageWidth);
 		gridView=findViewById(R.id.GridView);
@@ -266,7 +268,6 @@ public class MainActivity extends AppCompatActivity
 		{
 			try
 			{
-				@NonNull
 				final boolean isNightMode=sharedPreferences.getBoolean("isNightMode",false);
 				if(isNightMode)
 				{
@@ -287,15 +288,23 @@ public class MainActivity extends AppCompatActivity
 
 	public static boolean isInternet()
 	{
-		@Nullable
-		final NetworkInfo wifiInfo=connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
-		@NonNull
-		final boolean wifiConnected=(wifiInfo!=null?wifiInfo.getState():null)==NetworkInfo.State.CONNECTED;
-		@Nullable
-		final NetworkInfo mobileInfo=connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_MOBILE);
-		@NonNull
-		final boolean mobileConnected=(mobileInfo!=null?mobileInfo.getState():null)==NetworkInfo.State.CONNECTED;
-		return wifiConnected||mobileConnected;
+		try
+		{
+			@Nullable
+			final NetworkInfo wifiInfo=connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
+			@NonNull
+			final boolean wifiConnected=(wifiInfo!=null?wifiInfo.getState():null)==NetworkInfo.State.CONNECTED;
+			@Nullable
+			final NetworkInfo mobileInfo=connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_MOBILE);
+			@NonNull
+			final boolean mobileConnected=(mobileInfo!=null?mobileInfo.getState():null)==NetworkInfo.State.CONNECTED;
+			return wifiConnected||mobileConnected;
+		}
+		catch(Exception e)
+		{
+			e.printStackTrace();
+		}
+		return true;
 	}
 
 	public static void makeDirs()
@@ -386,7 +395,7 @@ public class MainActivity extends AppCompatActivity
 		try
 		{
 			@NonNull
-			final File textfilesdir=new File(cache+File.separator+"textfiles");
+			final File textfilesdir=new File(cache,"textfiles");
 			if(!textfilesdir.exists())
 			{
 				//noinspection ResultOfMethodCallIgnored
@@ -404,7 +413,6 @@ public class MainActivity extends AppCompatActivity
 		}
 		catch(Exception e)
 		{
-			Log.d(MAIN,String.valueOf(e));
 			e.printStackTrace();
 		}
 	}
@@ -442,6 +450,7 @@ public class MainActivity extends AppCompatActivity
 		}
 	}
 
+	// TODO исправить проблему с залипанием картинок на загрузке (!)
 	@Override
 	protected void onCreate(Bundle savedInstanceState)
 	{
@@ -464,13 +473,13 @@ public class MainActivity extends AppCompatActivity
 				{
 					@Nullable
 					final File[] files=previews.listFiles();
-					if(files==null||files.length==0)
+					if(files!=null&&files.length!=0)
 					{
-						startLinksParser();
+						updateGallery();
 					}
 					else
 					{
-						updateGallery();
+						startLinksParser();
 					}
 				}
 				else
@@ -526,6 +535,7 @@ public class MainActivity extends AppCompatActivity
 					}
 					else
 					{
+						@NonNull
 						final Intent intent=new Intent(MainActivity.this,FullImage.class);
 						intent.putExtra("URL",ImageAdapter.URLS.get(position));
 						intent.putExtra("Num",position);
@@ -582,7 +592,7 @@ public class MainActivity extends AppCompatActivity
 	protected void onDestroy()
 	{
 		super.onDestroy();
-		saveERRORLIST();
+		saveErrorList();
 		saveCurrentTheme();
 	}
 
@@ -622,7 +632,7 @@ public class MainActivity extends AppCompatActivity
 			state=gridView.onSaveInstanceState();
 		}
 		bundleGridViewState.putParcelable("GridViewState",state);
-		saveERRORLIST();
+		saveErrorList();
 		saveCurrentTheme();
 	}
 
@@ -641,7 +651,7 @@ public class MainActivity extends AppCompatActivity
 		}
 	}
 
-	private void regiesterNetworkStateChecker(ConnectivityManager connectivityManager)
+	private void regiesterNetworkStateChecker(@NonNull ConnectivityManager connectivityManager)
 	{
 		try
 		{
@@ -686,10 +696,11 @@ public class MainActivity extends AppCompatActivity
 		}
 	}
 
-	public static void saveERRORLIST()
+	public static void saveErrorList()
 	{
 		try
 		{
+			@NonNull
 			final Gson gson=new Gson();
 			@NonNull
 			final String hashMapString=gson.toJson(ERROR_LIST);
@@ -701,7 +712,6 @@ public class MainActivity extends AppCompatActivity
 		catch(Exception e)
 		{
 			e.printStackTrace();
-			Log.d(MAIN,String.valueOf(e));
 		}
 	}
 
@@ -709,14 +719,15 @@ public class MainActivity extends AppCompatActivity
 	{
 		if(isConnected)
 		{
-			ImageDownloader.REPEAT_NUM=3;
-			clearData();
 			@NonNull
-			final ProgressDialog progressDialog;
-			progressDialog=Build.VERSION.SDK_INT >= ALERTDIALOGSTYLEAPI?new ProgressDialog(MainActivity.this,R.style.AlertDialogStyle):new ProgressDialog(MainActivity.this);
+			final ProgressDialog progressDialog=Build.VERSION.SDK_INT >= ALERTDIALOGSTYLEAPI?new ProgressDialog(MainActivity.this,R.style.AlertDialogStyle):new ProgressDialog(MainActivity.this);
 			progressDialog.setMessage("Обновление данных. Подождите...");
 			progressDialog.setCancelable(false);
 			progressDialog.show();
+			clearData();
+			makeDirs();
+			ImageDownloader.ThreadsCounter.resetThreadsCoutner();
+			ImageDownloader.REPEAT_NUM=3;
 			@NonNull
 			final LinksParser linksParser=new LinksParser(progressDialog);
 			//noinspection AnonymousInnerClassMayBeStatic
@@ -725,8 +736,6 @@ public class MainActivity extends AppCompatActivity
 				@Override
 				public void run()
 				{
-					makeDirs();
-					ImageDownloader.ThreadsCounter.resetThreadsCoutner();
 					if(memoryCache!=null)
 					{
 						memoryCache.evictAll();
@@ -741,7 +750,7 @@ public class MainActivity extends AppCompatActivity
 		}
 	}
 
-	private void unregiesterNetworkStateChecker(ConnectivityManager connectivityManager)
+	private void unregiesterNetworkStateChecker(@NonNull ConnectivityManager connectivityManager)
 	{
 		try
 		{
@@ -767,8 +776,7 @@ public class MainActivity extends AppCompatActivity
 			@Override
 			public void run()
 			{
-				@NonNull
-				final GridView gridView=findViewById(R.id.GridView);
+				gridView=findViewById(R.id.GridView);
 				gridView.setAdapter(null);
 				imageAdapter=new ImageAdapter(getBaseContext());
 				gridView.setAdapter(imageAdapter);
@@ -813,7 +821,8 @@ public class MainActivity extends AppCompatActivity
 
 	class LinksParser extends Thread
 	{
-		ProgressDialog progressDialog;
+		@NonNull
+		final ProgressDialog progressDialog;
 
 		LinksParser(@NonNull ProgressDialog dialog)
 		{
@@ -837,9 +846,9 @@ public class MainActivity extends AppCompatActivity
 					final Call call=client.newCall(new Request.Builder().url(url).get().build());
 					@NonNull
 					final Response response=call.execute();
-					String line;
 					@NonNull
 					final BufferedReader bufferedReader=new BufferedReader(response.body()!=null?response.body().charStream():null);
+					String line;
 					while((line=bufferedReader.readLine())!=null)
 					{
 						downloader.append(line).append("\n");
@@ -848,7 +857,7 @@ public class MainActivity extends AppCompatActivity
 				}
 				catch(Exception e)
 				{
-					Log.d(TAG,String.valueOf(e));
+					e.printStackTrace();
 				}
 				downloader.close();
 			}

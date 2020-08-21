@@ -1,6 +1,5 @@
 package com.example.gallery;
 
-import android.annotation.SuppressLint;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -38,7 +37,7 @@ public final class ClientServer
 	{
 	}
 
-	public static void addImage(final String url)
+	public static void addImage(@NonNull final String url)
 	{
 		new Thread()
 		{
@@ -49,6 +48,7 @@ public final class ClientServer
 				{
 					@NonNull
 					final OkHttpClient client=new OkHttpClient.Builder().sslSocketFactory(ConnectionSettings.getTLSSocketFactory(),ConnectionSettings.getTrustManager()[0]).build();
+					@NonNull
 					final RequestBody requestBody=new FormBody.Builder().add("Login",SCRIPT_LOGIN).add("Password",SCRIPT_PASSWORD).add("Task",ADD_TASK).add("Add",url).build();
 					@NonNull
 					final Call call=client.newCall(new Request.Builder().url(SCRIPT_URL).post(requestBody).build());
@@ -94,7 +94,7 @@ public final class ClientServer
 	{
 		private final String url;
 
-		AddImageRequestCallback(String url)
+		AddImageRequestCallback(@NonNull String url)
 		{
 			this.url=url;
 		}
@@ -208,7 +208,6 @@ public final class ClientServer
 		}
 	}
 
-	@SuppressLint("HandlerLeak")
 	static class RequestHandler extends Handler
 	{
 		RequestHandler()

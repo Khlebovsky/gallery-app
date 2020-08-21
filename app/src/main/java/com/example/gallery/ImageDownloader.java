@@ -6,7 +6,6 @@ import android.graphics.BitmapFactory;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
-import android.util.Log;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -42,10 +41,11 @@ public final class ImageDownloader
 	static final File PREVIEWS=MainActivity.previews;
 	@Nullable
 	static final File BYTES=MainActivity.bytes;
+	static final int ERROR_TIME_SLEEP=1500;
 	public static int REPEAT_NUM=3;
 	static int imageWidth;
-	static int imageHeight;
-	static int ERROR_TIME_SLEEP=1500;
+	static final int CONTROL_NUMBER_OF_BYTES=50000;
+	@SuppressWarnings("unused")
 	@NonNull
 	private static final String TAG="ImageDownloader";
 	private static int MAX_THREAD_NUM=2;
@@ -54,7 +54,7 @@ public final class ImageDownloader
 	{
 	}
 
-	public static void addBitmapToMemoryCache(String key,Bitmap bitmap)
+	public static void addBitmapToMemoryCache(@NonNull String key,@NonNull Bitmap bitmap)
 	{
 		if(getBitmapFromMemoryCache(key)==null)
 		{
@@ -67,12 +67,12 @@ public final class ImageDownloader
 			}
 			catch(Exception e)
 			{
-				Log.d(TAG,String.valueOf(e));
+				e.printStackTrace();
 			}
 		}
 	}
 
-	static void downloadImageFromSharing(final String url,final ImageView imageView,final Context context,final AlertDialog.Builder builder)
+	static void downloadImageFromSharing(@NonNull final String url,@NonNull final ImageView imageView,@NonNull final Context context,@NonNull final AlertDialog.Builder builder)
 	{
 		new Thread()
 		{
@@ -102,12 +102,12 @@ public final class ImageDownloader
 							@NonNull
 							final byte[] buffer=new byte[4096];
 							@NonNull
-							int n;
+							int bytes;
 							if(inputStream!=null)
 							{
-								while((n=inputStream.read(buffer))>0)
+								while((bytes=inputStream.read(buffer))>0)
 								{
-									byteArrayOutputStream.write(buffer,0,n);
+									byteArrayOutputStream.write(buffer,0,bytes);
 								}
 							}
 							@NonNull
@@ -150,7 +150,6 @@ public final class ImageDownloader
 								bitmapOptions.inSampleSize=reductionRatio;
 								@Nullable
 								final Bitmap originalBitmap=BitmapFactory.decodeByteArray(byteArrayOutputStream.toByteArray(),0,byteArrayOutputStream.toByteArray().length,bitmapOptions);
-								Log.d(TAG,String.valueOf(reductionRatio));
 								if(originalBitmap!=null)
 								{
 									//noinspection AnonymousInnerClassMayBeStatic
@@ -159,9 +158,26 @@ public final class ImageDownloader
 										@Override
 										public void run()
 										{
-											imageView.setImageBitmap(originalBitmap);
-											imageView.setScaleType(ImageView.ScaleType.FIT_CENTER);
-											imageView.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
+											try
+											{
+												imageView.setImageBitmap(originalBitmap);
+												imageView.setScaleType(ImageView.ScaleType.FIT_CENTER);
+												imageView.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
+											}
+											catch(Exception e)
+											{
+												//noinspection AnonymousInnerClassMayBeStatic
+												((SharedImage)context).runOnUiThread(new Runnable()
+												{
+													@Override
+													public void run()
+													{
+														builder.setMessage("Ошибка загрузки: \nDecoding error");
+														builder.show();
+														imageView.setImageResource(R.drawable.ic_error);
+													}
+												});
+											}
 										}
 									});
 								}
@@ -238,7 +254,7 @@ public final class ImageDownloader
 		}.start();
 	}
 
-	static void downloadOrGetImageFromCache(final String url)
+	static void downloadOrGetImageFromCache(@NonNull final String url)
 	{
 		@NonNull
 		final String urlHashMD5=urlToHashMD5(url);
@@ -252,27 +268,24 @@ public final class ImageDownloader
 				public void run()
 				{
 					ThreadsCounter.increaseThreadsCounter();
-					@Nullable
-					Bitmap bitmap;
 					try
 					{
-						bitmap=BitmapFactory.decodeFile(String.valueOf(path));
+						@Nullable
+						final Bitmap bitmap=BitmapFactory.decodeFile(String.valueOf(path));
+						if(bitmap!=null)
+						{
+							addBitmapToMemoryCache(url,bitmap);
+							FILE_NAMES.put(url,urlHashMD5);
+						}
+						else
+						{
+							MainActivity.ERROR_LIST.put(url,"Decoding error");
+							FILE_NAMES.put(url,"error");
+						}
 					}
 					catch(Exception e)
 					{
-						Log.d(TAG,String.valueOf(e));
 						e.printStackTrace();
-						bitmap=null;
-					}
-					if(bitmap!=null)
-					{
-						addBitmapToMemoryCache(url,bitmap);
-						FILE_NAMES.put(url,urlHashMD5);
-					}
-					else
-					{
-						MainActivity.ERROR_LIST.put(url,"Decoding error");
-						FILE_NAMES.put(url,"error");
 					}
 					URLS_IN_PROGRESS.remove(url);
 					ThreadsCounter.decreaseThreadsCounter();
@@ -325,9 +338,9 @@ public final class ImageDownloader
 							InputStream inputStream=null;
 							if(response.code()==200||response.code()==201)
 							{
+								NO_INTERNET_LINKS.remove(url);
 								@NonNull
 								boolean isImage=true;
-								NO_INTERNET_LINKS.remove(url);
 								try
 								{
 									if(response.body()!=null)
@@ -337,13 +350,13 @@ public final class ImageDownloader
 									@NonNull
 									final byte[] buffer=new byte[4096];
 									@NonNull
-									int n;
+									int bytes;
 									if(inputStream!=null)
 									{
-										while((n=inputStream.read(buffer))>0)
+										while((bytes=inputStream.read(buffer))>0)
 										{
-											byteArrayOutputStream.write(buffer,0,n);
-											if(byteArrayOutputStream.toByteArray().length>30000)
+											byteArrayOutputStream.write(buffer,0,bytes);
+											if(byteArrayOutputStream.toByteArray().length>CONTROL_NUMBER_OF_BYTES)
 											{
 												try
 												{
@@ -391,14 +404,12 @@ public final class ImageDownloader
 											}
 											else
 											{
-												@NonNull
 												int factor=0;
 												while(originalBitmapWidth>imageWidth)
 												{
 													originalBitmapWidth/=2;
 													factor+=2;
 												}
-												@NonNull
 												final float heightRatio=(float)originalBitmapWidth/imageWidth*100;
 												if(heightRatio<75)
 												{
@@ -415,7 +426,6 @@ public final class ImageDownloader
 												}
 												catch(Exception e)
 												{
-													Log.d(TAG,String.valueOf(e));
 													e.printStackTrace();
 												}
 												if(preview!=null)
@@ -429,6 +439,7 @@ public final class ImageDownloader
 														@NonNull
 														final FileOutputStream fileOutputStream=new FileOutputStream(previewName);
 														preview.compress(Bitmap.CompressFormat.PNG,100,fileOutputStream);
+														fileOutputStream.flush();
 														fileOutputStream.close();
 														break;
 													}
@@ -476,7 +487,6 @@ public final class ImageDownloader
 						{
 							status="error";
 							exeption=String.valueOf(e);
-							Log.d(TAG,"error - "+url+' '+e);
 							e.printStackTrace();
 						}
 						if(!MainActivity.isConnected)
@@ -514,12 +524,12 @@ public final class ImageDownloader
 		}
 	}
 
-	public static Bitmap getBitmapFromMemoryCache(String key)
+	public static Bitmap getBitmapFromMemoryCache(@NonNull String key)
 	{
 		return MainActivity.memoryCache!=null?MainActivity.memoryCache.get(key):null;
 	}
 
-	public static Bitmap getImageBitmap(final String url)
+	public static Bitmap getImageBitmap(@NonNull final String url)
 	{
 		@Nullable
 		final Bitmap bitmap=getBitmapFromMemoryCache(url);
@@ -539,11 +549,8 @@ public final class ImageDownloader
 	public static void initStatic(@NonNull Context context)
 	{
 		imageWidth=context.getResources().getDimensionPixelSize(R.dimen.imageWidth);
-		//noinspection SuspiciousNameCombination
-		imageHeight=imageWidth;
 		try
 		{
-			@NonNull
 			int numOfCPUThreads=0;
 			@NonNull
 			final String systemPath="/sys/devices/system/cpu/";
@@ -572,7 +579,7 @@ public final class ImageDownloader
 		}
 	}
 
-	public static String urlToHashMD5(String url)
+	public static String urlToHashMD5(@NonNull String url)
 	{
 		try
 		{
@@ -582,12 +589,12 @@ public final class ImageDownloader
 			@NonNull
 			final byte[] messageDigest=digest.digest();
 			@NonNull
-			final StringBuilder hexString=new StringBuilder();
+			final StringBuilder hexStringBuilder=new StringBuilder();
 			for(final byte b : messageDigest)
 			{
-				hexString.append(Integer.toHexString(0xFF&b));
+				hexStringBuilder.append(Integer.toHexString(0xFF&b));
 			}
-			return hexString.toString();
+			return hexStringBuilder.toString();
 		}
 		catch(Exception e)
 		{

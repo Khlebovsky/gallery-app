@@ -72,7 +72,8 @@ public class FullImage extends AppCompatActivity
 		//noinspection deprecation
 		return new GestureDetector(new GestureDetector.SimpleOnGestureListener()
 		{
-			private SwipeDetector swipeDetector=new SwipeDetector();
+			@NonNull
+			private final SwipeDetector swipeDetector=new SwipeDetector();
 
 			@Override
 			public boolean onFling(MotionEvent e1,MotionEvent e2,float velocityX,float velocityY)
@@ -88,8 +89,9 @@ public class FullImage extends AppCompatActivity
 						if(touchImageView.getCurrentZoom()==1)
 						{
 							finish();
+							return true;
 						}
-						return true;
+						return false;
 					}
 					else if(swipeDetector.isSwipeLeft(e1,e2,velocityX))
 					{
@@ -141,8 +143,7 @@ public class FullImage extends AppCompatActivity
 		task.execute(1);
 	}
 
-	// TODO исправить обрезание меню на телефонах с вырезами
-	// TODO исправить размер шрифта в заголовке
+	// TODO исправить бесконечную загрузку каритинки
 	@Override
 	protected void onCreate(Bundle savedInstanceState)
 	{
@@ -156,8 +157,8 @@ public class FullImage extends AppCompatActivity
 		//noinspection ConstantConditions
 		@Nullable
 		final String url=intent.getExtras().getString("URL");
-		num=intent.getExtras().getInt("Num");
 		setTitle(url);
+		num=intent.getExtras().getInt("Num");
 		if(url!=null)
 		{
 			@Nullable
@@ -229,7 +230,7 @@ public class FullImage extends AppCompatActivity
 		final View decorView=getWindow().getDecorView();
 		if(Build.VERSION.SDK_INT >= IMPROVEDFULLSCREENAPI)
 		{
-			decorView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE|View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
+			decorView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE|View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN|View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
 		}
 		else
 		{
@@ -240,11 +241,11 @@ public class FullImage extends AppCompatActivity
 	class BitmapWorkerTask extends AsyncTask<Integer,Void,Bitmap>
 	{
 		@NonNull
-		Timer timer=new Timer();
-		@Nullable
-		TouchImageView touchImageView;
+		final Timer timer=new Timer();
 		@NonNull
-		private String path;
+		final TouchImageView touchImageView;
+		@NonNull
+		private final String path;
 
 		BitmapWorkerTask(@NonNull TouchImageView touchImageView,@NonNull String path)
 		{
@@ -294,20 +295,21 @@ public class FullImage extends AppCompatActivity
 		@Override
 		protected void onPostExecute(Bitmap bitmap)
 		{
-			timer.cancel();
 			if(bitmap!=null)
 			{
-				if(touchImageView!=null)
+				try
 				{
+					timer.cancel();
 					touchImageView.setImageBitmap(bitmap);
 					touchImageView.setDoubleTapScale(3);
 					touchImageView.setMaxZoom(10);
 					touchImageView.setScaleType(ImageView.ScaleType.FIT_CENTER);
 					touchImageView.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
 				}
-				else
+				catch(Exception e)
 				{
 					showErrorAlertDialog();
+					e.printStackTrace();
 				}
 			}
 			else
@@ -319,16 +321,9 @@ public class FullImage extends AppCompatActivity
 		@Override
 		protected void onPreExecute()
 		{
-			if(touchImageView!=null)
-			{
-				@NonNull
-				final ShowLoading showLoading=new ShowLoading();
-				timer.schedule(showLoading,500);
-			}
-			else
-			{
-				showErrorAlertDialog();
-			}
+			@NonNull
+			final ShowLoading showLoading=new ShowLoading();
+			timer.schedule(showLoading,500);
 		}
 
 		class ShowLoading extends TimerTask
@@ -341,14 +336,11 @@ public class FullImage extends AppCompatActivity
 					@Override
 					public void run()
 					{
-						if(touchImageView!=null)
-						{
-							final int size=getResources().getDimensionPixelSize(R.dimen.preloaderSize);
-							touchImageView.setMaxZoom(1);
-							touchImageView.setLayoutParams(new LinearLayout.LayoutParams(size,size));
-							touchImageView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
-							touchImageView.setImageResource(R.drawable.progress);
-						}
+						final int size=getResources().getDimensionPixelSize(R.dimen.preloaderSize);
+						touchImageView.setMaxZoom(1);
+						touchImageView.setLayoutParams(new LinearLayout.LayoutParams(size,size));
+						touchImageView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+						touchImageView.setImageResource(R.drawable.progress);
 					}
 				});
 			}

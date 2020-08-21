@@ -18,7 +18,7 @@ public class ImageAdapter extends BaseAdapter
 	@NonNull
 	public static final ArrayList<String> URLS=new ArrayList<>();
 	@NonNull
-	Context context;
+	final Context context;
 	@SuppressWarnings("unused")
 	@NonNull
 	private static final String TAG="ImageAdapter";
@@ -78,20 +78,17 @@ public class ImageAdapter extends BaseAdapter
 		final ImageView imageView;
 		if(view==null)
 		{
-			imageView=new ImageView(viewGroup.getContext());
-			@NonNull
-			final float scale=context.getResources().getDisplayMetrics().density;
-			@NonNull
-			final int margindp=(int)(4*scale);
-			@NonNull
+			final int margin=context.getResources().getDimensionPixelSize(R.dimen.gridViewElementMargin);
 			final int height=context.getResources().getDimensionPixelSize(R.dimen.imageWidth);
+			imageView=new ImageView(viewGroup.getContext());
 			imageView.setLayoutParams(new GridView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,height));
-			imageView.setPadding(margindp,margindp,margindp,margindp);
+			imageView.setPadding(margin,margin,margin,margin);
 		}
 		else
 		{
 			imageView=(ImageView)view;
 		}
+		@NonNull
 		final String url=URLS.get(i);
 		if(ImageDownloader.NO_INTERNET_LINKS.contains(url))
 		{

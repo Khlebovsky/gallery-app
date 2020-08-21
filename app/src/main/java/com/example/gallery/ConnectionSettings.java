@@ -51,6 +51,7 @@ public final class ConnectionSettings
 
 	public static class MyTrustedManager implements X509TrustManager
 	{
+		@NonNull
 		public static final X509Certificate[] X_509_CERTIFICATES=new X509Certificate[0];
 		static TrustManager[] tms;
 		X509TrustManager pkixTrustManager;
@@ -66,7 +67,6 @@ public final class ConnectionSettings
 				if(tm instanceof X509TrustManager)
 				{
 					pkixTrustManager=(X509TrustManager)tm;
-					return;
 				}
 			}
 		}
@@ -99,9 +99,10 @@ public final class ConnectionSettings
 
 	public static class TLSSocketFactory extends SSLSocketFactory
 	{
-		private SSLSocketFactory internalSSLSocketFactory;
+		@NonNull
+		private final SSLSocketFactory internalSSLSocketFactory;
 
-		public TLSSocketFactory(SSLSocketFactory delegate)
+		public TLSSocketFactory(@NonNull SSLSocketFactory delegate)
 		{
 			internalSSLSocketFactory=delegate;
 		}
@@ -136,7 +137,7 @@ public final class ConnectionSettings
 			return enableTLSOnSocket(internalSSLSocketFactory.createSocket(address,port,localAddress,localPort));
 		}
 
-		private static Socket enableTLSOnSocket(Socket socket)
+		private static Socket enableTLSOnSocket(@NonNull Socket socket)
 		{
 			if((socket instanceof SSLSocket)&&isTLSServerEnabled((SSLSocket)socket))
 			{
@@ -157,7 +158,7 @@ public final class ConnectionSettings
 			return internalSSLSocketFactory.getSupportedCipherSuites();
 		}
 
-		private static boolean isTLSServerEnabled(SSLSocket sslSocket)
+		private static boolean isTLSServerEnabled(@NonNull SSLSocket sslSocket)
 		{
 			for(final String protocol : sslSocket.getSupportedProtocols())
 			{
