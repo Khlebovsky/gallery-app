@@ -23,17 +23,19 @@
 		<item name="actionBarStyle">@style/FullImageActionBar</item>
 	</style>
 
+	<style name="FullImageActionBar" parent="Widget.AppCompat.ActionBar">
+		<item name="background">@color/transparentBlack</item>
+		<item name="android:background">@color/transparentBlack</item>
+		<item name="titleTextStyle">@style/ToolbarTitle</item>
+		<item name="elevation">0dp</item>
+		<item name="android:elevation">0dp</item>
+	</style>
+
 	<style name="ShareImageScreen" parent="Theme.AppCompat.DayNight.DarkActionBar">
 		<item name="colorPrimary">@color/colorPrimary</item>
 		<item name="colorPrimaryDark">@color/colorPrimaryDark</item>
 		<item name="colorAccent">@color/colorAccent</item>
 		<item name="android:navigationBarColor">@color/navBarColor</item>
 		<item name="actionBarStyle">@style/DefaultActionBar</item>
-	</style>
-
-	<style name="AlertDialogStyle" parent="Theme.AppCompat.DayNight.Dialog.Alert">
-		<item name="colorAccent">@color/elementsColor</item>
-		<item name="android:textColor">@color/elementsColor</item>
-		<item name="android:background">@color/backgroundColor</item>
 	</style>
 </resources>

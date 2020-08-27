@@ -7,10 +7,6 @@ import androidx.annotation.NonNull;
 
 public class ConnectivityReceiver extends BroadcastReceiver
 {
-	@SuppressWarnings("unused")
-	@NonNull
-	private static final String TAG="ConnectivityReceiver";
-
 	@Override
 	public void onReceive(Context context,Intent intent)
 	{
@@ -18,18 +14,7 @@ public class ConnectivityReceiver extends BroadcastReceiver
 		{
 			MainActivity.isConnected=true;
 			ImageDownloader.NO_INTERNET_LINKS.clear();
-			if(MainActivity.imageAdapter!=null)
-			{
-				//noinspection AnonymousInnerClassMayBeStatic
-				((MainActivity)context).runOnUiThread(new Runnable()
-				{
-					@Override
-					public void run()
-					{
-						MainActivity.imageAdapter.notifyDataSetChanged();
-					}
-				});
-			}
+			ImageDownloader.callNotifyDataSetChanged();
 		}
 		else
 		{

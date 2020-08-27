@@ -9,13 +9,6 @@ public final class SwipeDetector
 	private final int swipe_distance;
 	private final int swipe_velocity;
 
-	@SuppressWarnings("unused")
-	public SwipeDetector(int distance,int velocity)
-	{
-		swipe_distance=distance;
-		swipe_velocity=velocity;
-	}
-
 	public SwipeDetector()
 	{
 		swipe_distance=SWIPE_MIN_DISTANCE;

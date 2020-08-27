@@ -1,6 +1,4 @@
 <resources>
 	<dimen name="imageWidth">100dp</dimen>
 	<dimen name="preloaderSize">64dp</dimen>
-	<dimen name="toolbarTitleSize">18sp</dimen>
-	<dimen name="gridViewElementMargin">4dp</dimen>
 </resources>

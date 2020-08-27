@@ -1,12 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
 	  xmlns:app="http://schemas.android.com/apk/res-auto">
+	<item android:id="@+id/shareImage"
+		  android:title="@string/share_image"
+		  app:showAsAction="never" />
 	<item android:id="@+id/deleteImage"
-		  android:icon="@drawable/ic_delete"
-		  android:title="@string/deleteImage"
-		  app:showAsAction="ifRoom" />
-	<item android:id="@+id/home"
-		  android:icon="@drawable/ic_arrow_back"
-		  android:title="@string/home"
-		  app:showAsAction="always" />
+		  android:title="@string/delete_image"
+		  app:showAsAction="never" />
 </menu>

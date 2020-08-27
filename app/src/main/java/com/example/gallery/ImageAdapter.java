@@ -18,20 +18,14 @@ public class ImageAdapter extends BaseAdapter
 	@NonNull
 	public static final ArrayList<String> URLS=new ArrayList<>();
 	@NonNull
-	final Context context;
-	@SuppressWarnings("unused")
-	@NonNull
-	private static final String TAG="ImageAdapter";
-	@NonNull
 	private static final String LOADING="progress";
 	@NonNull
 	private static final String ERROR="error";
 	@NonNull
 	private static final String LOADING_ERROR="progress error";
 
-	public ImageAdapter(@NonNull Context context)
+	public ImageAdapter()
 	{
-		this.context=context;
 		URLS.clear();
 		try
 		{
@@ -78,8 +72,8 @@ public class ImageAdapter extends BaseAdapter
 		final ImageView imageView;
 		if(view==null)
 		{
-			final int margin=context.getResources().getDimensionPixelSize(R.dimen.gridViewElementMargin);
-			final int height=context.getResources().getDimensionPixelSize(R.dimen.imageWidth);
+			final int margin=MainActivity.resources.getDimensionPixelSize(R.dimen.gridViewElementMargin);
+			final int height=MainActivity.resources.getDimensionPixelSize(R.dimen.imageWidth);
 			imageView=new ImageView(viewGroup.getContext());
 			imageView.setLayoutParams(new GridView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,height));
 			imageView.setPadding(margin,margin,margin,margin);

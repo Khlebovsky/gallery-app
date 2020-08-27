@@ -2,7 +2,6 @@
 <resources>
     <color name="colorPrimary">#5F0402</color>
     <color name="colorPrimaryDark">#000000</color>
-    <color name="colorAccent">#000000</color>
     <color name="backgroundColor">#1A1A1A</color>
     <color name="listSelector">#40ffffff</color>
     <color name="scrollbarColor">#5dffffff</color>

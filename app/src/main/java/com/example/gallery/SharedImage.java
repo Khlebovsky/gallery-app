@@ -21,29 +21,23 @@ public class SharedImage extends AppCompatActivity
 	public static ImageView imageView;
 	static Context context;
 	static String url;
-	@SuppressWarnings("unused")
+	static SharedImage sharedImage;
 	@NonNull
-	private static final String TAG="SharedImage";
+	private static final String MIMETYPE_TEXT="text/plain";
 
 	void handleSendText(@NonNull Intent intent)
 	{
-		@NonNull
-		final AlertDialog.Builder builder=new AlertDialog.Builder(SharedImage.this,R.style.AlertDialogStyle);
-		builder.setCancelable(false);
-		builder.setTitle("Ошибка");
-		builder.setPositiveButton("OK",new AlertDialogOnClickListener());
 		@Nullable
 		final String imageUrl=intent.getStringExtra(Intent.EXTRA_TEXT);
 		if(imageUrl!=null)
 		{
 			url=imageUrl;
 			setTitle(url);
-			ImageDownloader.downloadImageFromSharing(imageUrl,imageView,context,builder);
+			ImageDownloader.downloadImageFromSharing(imageUrl,imageView,context);
 		}
 		else
 		{
-			builder.setMessage("Ошибка: \nНевалидная ссылка");
-			builder.show();
+			showSharedImageAlertDialog("Invalid link");
 			imageView.setImageResource(R.drawable.ic_error);
 		}
 	}
@@ -51,16 +45,17 @@ public class SharedImage extends AppCompatActivity
 	void initStatic()
 	{
 		MainActivity.initCacheDirs(getBaseContext());
+		sharedImage=SharedImage.this;
+		context=SharedImage.this;
 		imageView=findViewById(R.id.share_image_view);
 		@NonNull
 		final ImageButton cancelButton=findViewById(R.id.cancel_button);
 		@NonNull
 		final ImageButton applyButton=findViewById(R.id.apply_button);
-		final int size=getResources().getDimensionPixelSize(R.dimen.preloaderSize);
+		final int size=MainActivity.resources.getDimensionPixelSize(R.dimen.preloaderSize);
 		imageView.setLayoutParams(new LinearLayout.LayoutParams(size,size));
 		imageView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
 		imageView.setImageResource(R.drawable.progress);
-		context=SharedImage.this;
 		cancelButton.setOnClickListener(new View.OnClickListener()
 		{
 			@Override
@@ -85,13 +80,13 @@ public class SharedImage extends AppCompatActivity
 				catch(Exception e)
 				{
 					e.printStackTrace();
-					finish();
 				}
+				ImageDownloader.callNotifyDataSetChanged();
+				finish();
 			}
 		});
 	}
 
-	// TODO исправить обработку входящих ссылок
 	@Override
 	protected void onCreate(Bundle savedInstanceState)
 	{
@@ -106,7 +101,7 @@ public class SharedImage extends AppCompatActivity
 		final String action=intent.getAction();
 		@Nullable
 		final String type=intent.getType();
-		if(Intent.ACTION_SEND.equals(action)&&"text/plain".equals(type))
+		if(Intent.ACTION_SEND.equals(action)&&MIMETYPE_TEXT.equals(type))
 		{
 			handleSendText(intent);
 		}
@@ -117,7 +112,7 @@ public class SharedImage extends AppCompatActivity
 	{
 		@NonNull
 		final MenuInflater inflater=getMenuInflater();
-		inflater.inflate(R.menu.share_image_menu,menu);
+		inflater.inflate(R.menu.shared_image_menu,menu);
 		return true;
 	}
 
@@ -136,17 +131,37 @@ public class SharedImage extends AppCompatActivity
 			{
 				e.printStackTrace();
 			}
+			ImageDownloader.callNotifyDataSetChanged();
+			finish();
 			return true;
 		}
 		return super.onOptionsItemSelected(item);
 	}
 
-	class AlertDialogOnClickListener implements DialogInterface.OnClickListener
+	public static void showSharedImageAlertDialog(@NonNull final String error)
+	{
+		sharedImage.runOnUiThread(new Runnable()
+		{
+			@Override
+			public void run()
+			{
+				@NonNull
+				final AlertDialog.Builder builder=new AlertDialog.Builder(sharedImage,R.style.AlertDialogTheme);
+				builder.setCancelable(false);
+				builder.setTitle("Ошибка");
+				builder.setMessage("Ошибка: \n"+error);
+				builder.setPositiveButton("Ок",new AlertDialogOnClickListener());
+				builder.show();
+			}
+		});
+	}
+
+	static class AlertDialogOnClickListener implements DialogInterface.OnClickListener
 	{
 		@Override
 		public void onClick(DialogInterface dialogInterface,int i)
 		{
-			finish();
+			sharedImage.finish();
 		}
 	}
 }

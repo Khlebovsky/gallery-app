@@ -20,7 +20,6 @@ import java.util.HashMap;
 import java.util.concurrent.TimeUnit;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.AlertDialog;
 import okhttp3.Call;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -42,12 +41,9 @@ public final class ImageDownloader
 	@Nullable
 	static final File BYTES=MainActivity.bytes;
 	static final int ERROR_TIME_SLEEP=1500;
+	static final int CONTROL_NUMBER_OF_BYTES=50000;
 	public static int REPEAT_NUM=3;
 	static int imageWidth;
-	static final int CONTROL_NUMBER_OF_BYTES=50000;
-	@SuppressWarnings("unused")
-	@NonNull
-	private static final String TAG="ImageDownloader";
 	private static int MAX_THREAD_NUM=2;
 
 	private ImageDownloader()
@@ -72,7 +68,14 @@ public final class ImageDownloader
 		}
 	}
 
-	static void downloadImageFromSharing(@NonNull final String url,@NonNull final ImageView imageView,@NonNull final Context context,@NonNull final AlertDialog.Builder builder)
+	public static void callNotifyDataSetChanged()
+	{
+		@NonNull
+		final Message message=ImageDownloader.GALLERY_HANDLER.obtainMessage();
+		ImageDownloader.GALLERY_HANDLER.sendMessage(message);
+	}
+
+	static void downloadImageFromSharing(@NonNull final String url,@NonNull final ImageView imageView,@NonNull final Context context)
 	{
 		new Thread()
 		{
@@ -120,17 +123,7 @@ public final class ImageDownloader
 							int originalBitmapHeight=options.outHeight;
 							if(originalBitmapWidth==-1)
 							{
-								//noinspection AnonymousInnerClassMayBeStatic
-								((SharedImage)context).runOnUiThread(new Runnable()
-								{
-									@Override
-									public void run()
-									{
-										builder.setMessage("Ошибка загрузки: \nThe file is not a picture");
-										builder.show();
-										imageView.setImageResource(R.drawable.ic_error);
-									}
-								});
+								SharedImage.showSharedImageAlertDialog("The file is not a picture");
 							}
 							else
 							{
@@ -166,50 +159,20 @@ public final class ImageDownloader
 											}
 											catch(Exception e)
 											{
-												//noinspection AnonymousInnerClassMayBeStatic
-												((SharedImage)context).runOnUiThread(new Runnable()
-												{
-													@Override
-													public void run()
-													{
-														builder.setMessage("Ошибка загрузки: \nDecoding error");
-														builder.show();
-														imageView.setImageResource(R.drawable.ic_error);
-													}
-												});
+												SharedImage.showSharedImageAlertDialog("Decoding error");
 											}
 										}
 									});
 								}
 								else
 								{
-									//noinspection AnonymousInnerClassMayBeStatic
-									((SharedImage)context).runOnUiThread(new Runnable()
-									{
-										@Override
-										public void run()
-										{
-											builder.setMessage("Ошибка загрузки: \nDecoding error");
-											builder.show();
-											imageView.setImageResource(R.drawable.ic_error);
-										}
-									});
+									SharedImage.showSharedImageAlertDialog("Decoding error");
 								}
 							}
 						}
 						catch(Exception e)
 						{
-							//noinspection AnonymousInnerClassMayBeStatic
-							((SharedImage)context).runOnUiThread(new Runnable()
-							{
-								@Override
-								public void run()
-								{
-									builder.setMessage("Ошибка загрузки: \nConnection error");
-									builder.show();
-									imageView.setImageResource(R.drawable.ic_error);
-								}
-							});
+							SharedImage.showSharedImageAlertDialog("Connection error");
 							e.printStackTrace();
 						}
 						finally
@@ -222,39 +185,18 @@ public final class ImageDownloader
 					}
 					else
 					{
-						//noinspection AnonymousInnerClassMayBeStatic
-						((SharedImage)context).runOnUiThread(new Runnable()
-						{
-							@Override
-							public void run()
-							{
-								builder.setMessage("Ошибка загрузки: \nResponse code: "+response.code());
-								builder.show();
-								imageView.setImageResource(R.drawable.ic_error);
-							}
-						});
+						SharedImage.showSharedImageAlertDialog("Response code: "+response.code());
 					}
 				}
 				catch(Exception e)
 				{
-					//noinspection AnonymousInnerClassMayBeStatic
-					((SharedImage)context).runOnUiThread(new Runnable()
-					{
-						@Override
-						public void run()
-						{
-							builder.setMessage("Ошибка загрузки: \nUnknown error");
-							builder.show();
-							imageView.setImageResource(R.drawable.ic_error);
-						}
-					});
-					e.printStackTrace();
+					SharedImage.showSharedImageAlertDialog("Unknown error");
 				}
 			}
 		}.start();
 	}
 
-	static void downloadOrGetImageFromCache(@NonNull final String url)
+	static void downloadOrGetImageFromDisk(@NonNull final String url)
 	{
 		@NonNull
 		final String urlHashMD5=urlToHashMD5(url);
@@ -289,9 +231,7 @@ public final class ImageDownloader
 					}
 					URLS_IN_PROGRESS.remove(url);
 					ThreadsCounter.decreaseThreadsCounter();
-					@NonNull
-					final Message message=GALLERY_HANDLER.obtainMessage();
-					GALLERY_HANDLER.sendMessage(message);
+					callNotifyDataSetChanged();
 				}
 			}.start();
 		}
@@ -363,9 +303,7 @@ public final class ImageDownloader
 													@NonNull
 													final BitmapFactory.Options options=new BitmapFactory.Options();
 													options.inJustDecodeBounds=true;
-													//noinspection unused
-													@Nullable
-													final Bitmap originalBitmap=BitmapFactory.decodeByteArray(byteArrayOutputStream.toByteArray(),0,byteArrayOutputStream.toByteArray().length,options);
+													BitmapFactory.decodeByteArray(byteArrayOutputStream.toByteArray(),0,byteArrayOutputStream.toByteArray().length,options);
 													@NonNull
 													final int originalBitmapWidth=options.outWidth;
 													if(originalBitmapWidth==-1)
@@ -516,9 +454,7 @@ public final class ImageDownloader
 					}
 					URLS_IN_PROGRESS.remove(url);
 					ThreadsCounter.decreaseThreadsCounter();
-					@NonNull
-					final Message message=GALLERY_HANDLER.obtainMessage();
-					GALLERY_HANDLER.sendMessage(message);
+					callNotifyDataSetChanged();
 				}
 			}.start();
 		}
@@ -537,18 +473,32 @@ public final class ImageDownloader
 		{
 			return bitmap;
 		}
+		if(FILE_NAMES.containsKey(url)&&URLS_IN_PROGRESS.contains(url))
+		{
+			URLS_IN_PROGRESS.remove(url);
+			if(MainActivity.memoryCache!=null)
+			{
+				MainActivity.memoryCache.remove(url);
+			}
+		}
 		if(ThreadsCounter.getThreadCount()<MAX_THREAD_NUM&&!URLS_IN_PROGRESS.contains(url))
 		{
-			URLS_IN_PROGRESS.add(url);
-			downloadOrGetImageFromCache(url);
-			return null;
+			try
+			{
+				URLS_IN_PROGRESS.add(url);
+				downloadOrGetImageFromDisk(url);
+			}
+			catch(Exception e)
+			{
+				e.printStackTrace();
+			}
 		}
 		return null;
 	}
 
-	public static void initStatic(@NonNull Context context)
+	public static void initStatic()
 	{
-		imageWidth=context.getResources().getDimensionPixelSize(R.dimen.imageWidth);
+		imageWidth=MainActivity.resources.getDimensionPixelSize(R.dimen.imageWidth);
 		try
 		{
 			int numOfCPUThreads=0;

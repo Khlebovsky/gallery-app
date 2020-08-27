@@ -18,9 +18,6 @@ public final class ClientServer
 {
 	@NonNull
 	static final RequestHandler REQUEST_HANDLER=new RequestHandler();
-	@SuppressWarnings("unused")
-	@NonNull
-	private static final String TAG="ClientServer";
 	@NonNull
 	private static final String SCRIPT_URL="https://khlebovsky.ru/linkseditor.php";
 	@NonNull
@@ -29,7 +26,6 @@ public final class ClientServer
 	private static final String SCRIPT_PASSWORD="6e=Cmf&pUk7Lp{M@Gdq+";
 	@NonNull
 	private static final String DELETE_TASK="Delete";
-	@SuppressWarnings("unused")
 	@NonNull
 	private static final String ADD_TASK="Add";
 
@@ -140,11 +136,10 @@ public final class ClientServer
 				}
 			}
 			@NonNull
-			Message message=REQUEST_HANDLER.obtainMessage(0,1,1,url);
+			final Message message=REQUEST_HANDLER.obtainMessage(0,1,1,url);
 			REQUEST_HANDLER.sendMessage(message);
 			ImageAdapter.URLS.add(url);
-			message=ImageDownloader.GALLERY_HANDLER.obtainMessage();
-			ImageDownloader.GALLERY_HANDLER.sendMessage(message);
+			ImageDownloader.callNotifyDataSetChanged();
 		}
 	}
 
@@ -200,11 +195,10 @@ public final class ClientServer
 				}
 			}
 			@NonNull
-			Message message=REQUEST_HANDLER.obtainMessage(0,2,2,ImageAdapter.URLS.get(numToDelete));
+			final Message message=REQUEST_HANDLER.obtainMessage(0,2,2,ImageAdapter.URLS.get(numToDelete));
 			REQUEST_HANDLER.sendMessage(message);
 			ImageAdapter.URLS.remove(numToDelete);
-			message=ImageDownloader.GALLERY_HANDLER.obtainMessage();
-			ImageDownloader.GALLERY_HANDLER.sendMessage(message);
+			ImageDownloader.callNotifyDataSetChanged();
 		}
 	}
 

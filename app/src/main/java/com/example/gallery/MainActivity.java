@@ -1,23 +1,19 @@
 package com.example.gallery;
 
 import android.app.Dialog;
-import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
+import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Point;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkInfo;
-import android.os.Build;
-import android.os.Bundle;
-import android.os.Environment;
-import android.os.Handler;
-import android.os.Parcelable;
+import android.os.*;
 import android.util.LruCache;
 import android.view.Display;
 import android.view.Menu;
@@ -62,7 +58,8 @@ public class MainActivity extends AppCompatActivity
 	public static File previews;
 	@Nullable
 	public static File bytes;
-	public static int quantity;
+	@Nullable
+	public static File share;
 	@Nullable
 	public static LruCache<String,Bitmap> memoryCache;
 	@Nullable
@@ -76,6 +73,7 @@ public class MainActivity extends AppCompatActivity
 	public static Context context;
 	@Nullable
 	public static File linksFile;
+	public static Resources resources;
 	static int width;
 	static int height;
 	static float imageWidth;
@@ -84,27 +82,21 @@ public class MainActivity extends AppCompatActivity
 	Parcelable state;
 	@Nullable
 	Bundle bundleGridViewState;
-	@SuppressWarnings("unused")
-	@NonNull
-	private static final String TAG="LinksParserThread";
-	@SuppressWarnings("unused")
-	@NonNull
-	private static final String MAIN="MainThread";
 	@NonNull
 	private static final String IMAGESURL="https://khlebovsky.ru/images.txt";
 	private static final int NETWORKCALLBACKAPI=24;
-	private static final int ALERTDIALOGSTYLEAPI=21;
 	private static final int GOOGLESERVICESAPI=19;
+	private static final int NIGHTMODEAPI=17;
 	private static NetworkCallback networkCallback;
 	private static ConnectivityReceiver connectivityReceiver;
 
 	public void alertNoInternet()
 	{
 		@NonNull
-		final AlertDialog.Builder builder=new AlertDialog.Builder(MainActivity.this,R.style.AlertDialogStyle);
+		final AlertDialog.Builder builder=new AlertDialog.Builder(MainActivity.this,R.style.AlertDialogTheme);
 		builder.setTitle("Нет интернета");
 		builder.setMessage("Нет подключения к интернету. Включите WI-FI или сотовую связь и попробуйте снова.");
-		builder.setPositiveButton("OK",new AlertDialogOnClickListener());
+		builder.setPositiveButton("Ок",new AlertDialogOnClickListener());
 		builder.show();
 	}
 
@@ -129,6 +121,14 @@ public class MainActivity extends AppCompatActivity
 		LINKS_STATUS.clear();
 		URLS.clear();
 		ImageAdapter.URLS.clear();
+	}
+
+	public static void clearMemoryCache()
+	{
+		if(memoryCache!=null)
+		{
+			memoryCache.evictAll();
+		}
 	}
 
 	static void getErrorLinksFromSharedPrefs()
@@ -163,6 +163,15 @@ public class MainActivity extends AppCompatActivity
 		}
 	}
 
+	static int getQuantityItemsOnScreen()
+	{
+		final int numInWidth=(int)(width/imageWidth);
+		final int numInHeight=(int)(height/imageWidth);
+		int quantity=numInWidth*numInHeight;
+		quantity+=resources.getConfiguration().orientation==Configuration.ORIENTATION_PORTRAIT?numInWidth<<1:numInWidth;
+		return quantity;
+	}
+
 	public static void initCacheDirs(@NonNull Context context)
 	{
 		try
@@ -178,6 +187,7 @@ public class MainActivity extends AppCompatActivity
 		}
 		previews=new File(cache,"previews");
 		bytes=new File(cache,"bytes");
+		share=new File(cache,"share");
 		@NonNull
 		final File textfilesdir=new File(cache,"textfiles");
 		linksFile=new File(textfilesdir,"links.txt");
@@ -202,12 +212,7 @@ public class MainActivity extends AppCompatActivity
 	{
 		if(memoryCache==null)
 		{
-			@NonNull
-			final int width=MainActivity.width;
-			@NonNull
-			final int height=MainActivity.height;
-			quantity=(int)(((width/imageWidth)*(height/imageWidth))+((width/imageWidth)*4));
-			memoryCache=new LruCache<String,Bitmap>(quantity)
+			memoryCache=new LruCache<String,Bitmap>(getQuantityItemsOnScreen())
 			{
 				@Override
 				protected int sizeOf(String key,Bitmap value)
@@ -218,7 +223,7 @@ public class MainActivity extends AppCompatActivity
 		}
 	}
 
-	void initNetworkStatusListener()
+	static void initNetworkStatusListener()
 	{
 		if(Build.VERSION.SDK_INT >= NETWORKCALLBACKAPI)
 		{
@@ -240,9 +245,10 @@ public class MainActivity extends AppCompatActivity
 
 	void initStatic()
 	{
-		setTitle(getResources().getString(R.string.app_name));
+		resources=getResources();
+		setTitle(resources.getString(R.string.app_name));
 		context=getBaseContext();
-		imageWidth=getResources().getDimensionPixelSize(R.dimen.imageWidth);
+		imageWidth=resources.getDimensionPixelSize(R.dimen.imageWidth);
 		gridView=findViewById(R.id.GridView);
 		connectivityManager=(ConnectivityManager)getSystemService(CONNECTIVITY_SERVICE);
 		isConnected=isInternet();
@@ -264,7 +270,7 @@ public class MainActivity extends AppCompatActivity
 
 	static void initTheme()
 	{
-		if(!isThemeChanged&&sharedPreferences!=null)
+		if(!isThemeChanged&&sharedPreferences!=null&&Build.VERSION.SDK_INT >= NIGHTMODEAPI)
 		{
 			try
 			{
@@ -326,6 +332,11 @@ public class MainActivity extends AppCompatActivity
 				//noinspection ResultOfMethodCallIgnored
 				bytes.mkdirs();
 			}
+			if(share!=null&&!share.exists())
+			{
+				//noinspection ResultOfMethodCallIgnored
+				share.mkdirs();
+			}
 			if(previews!=null&&previews.exists())
 			{
 				try
@@ -352,6 +363,26 @@ public class MainActivity extends AppCompatActivity
 				{
 					@Nullable
 					final File[] files=bytes.listFiles();
+					if(files!=null&&files.length!=0)
+					{
+						for(final File file : files)
+						{
+							//noinspection ResultOfMethodCallIgnored
+							file.delete();
+						}
+					}
+				}
+				catch(Exception e)
+				{
+					e.printStackTrace();
+				}
+			}
+			if(share!=null&&share.exists())
+			{
+				try
+				{
+					@Nullable
+					final File[] files=share.listFiles();
 					if(files!=null&&files.length!=0)
 					{
 						for(final File file : files)
@@ -421,6 +452,7 @@ public class MainActivity extends AppCompatActivity
 	public void onConfigurationChanged(@NonNull Configuration newConfig)
 	{
 		super.onConfigurationChanged(newConfig);
+		resizeMemoryCache();
 		bundleGridViewState=new Bundle();
 		state=gridView!=null?gridView.onSaveInstanceState():null;
 		bundleGridViewState.putParcelable("GridViewState",state);
@@ -432,8 +464,6 @@ public class MainActivity extends AppCompatActivity
 		width=size.x;
 		height=size.y;
 		@NonNull
-		final GridView gridView=findViewById(R.id.GridView);
-		@NonNull
 		final int num=(int)(width/imageWidth);
 		gridView.setColumnWidth((int)imageWidth);
 		gridView.setNumColumns(num);
@@ -443,14 +473,10 @@ public class MainActivity extends AppCompatActivity
 		}
 		if(gridView.getAdapter()!=null)
 		{
-			if(imageAdapter!=null)
-			{
-				imageAdapter.notifyDataSetChanged();
-			}
+			ImageDownloader.callNotifyDataSetChanged();
 		}
 	}
 
-	// TODO исправить проблему с залипанием картинок на загрузке (!)
 	@Override
 	protected void onCreate(Bundle savedInstanceState)
 	{
@@ -464,7 +490,7 @@ public class MainActivity extends AppCompatActivity
 		getErrorLinksFromSharedPrefs();
 		initMemoryCache();
 		initGooglePlayServices();
-		ImageDownloader.initStatic(getBaseContext());
+		ImageDownloader.initStatic();
 		if(isConnected)
 		{
 			try
@@ -510,7 +536,7 @@ public class MainActivity extends AppCompatActivity
 					if(LINKS_STATUS.containsKey(ImageAdapter.URLS.get(position)))
 					{
 						@NonNull
-						final AlertDialog.Builder builder=new AlertDialog.Builder(MainActivity.this,R.style.AlertDialogStyle);
+						final AlertDialog.Builder builder=new AlertDialog.Builder(MainActivity.this,R.style.AlertDialogTheme);
 						if(ImageDownloader.NO_INTERNET_LINKS.contains(ImageAdapter.URLS.get(position)))
 						{
 							builder.setTitle("Ошибка");
@@ -530,7 +556,7 @@ public class MainActivity extends AppCompatActivity
 							builder.setNegativeButton("Удалить",new AlertDialogOnClickListener(position));
 							builder.setNeutralButton("Перезагрузить",new AlertDialogOnClickListener(position));
 						}
-						builder.setPositiveButton("OK",new AlertDialogOnClickListener());
+						builder.setPositiveButton("Ок",new AlertDialogOnClickListener());
 						builder.show();
 					}
 					else
@@ -547,10 +573,10 @@ public class MainActivity extends AppCompatActivity
 						catch(Throwable e)
 						{
 							@NonNull
-							final AlertDialog.Builder builder=new AlertDialog.Builder(MainActivity.this,R.style.AlertDialogStyle);
+							final AlertDialog.Builder builder=new AlertDialog.Builder(MainActivity.this,R.style.AlertDialogTheme);
 							builder.setTitle("Ошибка");
 							builder.setMessage("Ошибка: \nПроизошла непредвиденная ошибка");
-							builder.setPositiveButton("OK",new AlertDialogOnClickListener());
+							builder.setPositiveButton("Ок",new AlertDialogOnClickListener());
 							builder.show();
 							e.printStackTrace();
 						}
@@ -576,14 +602,17 @@ public class MainActivity extends AppCompatActivity
 		@NonNull
 		final MenuInflater inflater=getMenuInflater();
 		inflater.inflate(R.menu.main_menu,menu);
-		final int nightMode=AppCompatDelegate.getDefaultNightMode();
-		if(nightMode==AppCompatDelegate.MODE_NIGHT_YES)
+		if(Build.VERSION.SDK_INT >= NIGHTMODEAPI)
 		{
-			menu.findItem(R.id.changeTheme).setTitle(R.string.lightTheme);
-		}
-		else
-		{
-			menu.findItem(R.id.changeTheme).setTitle(R.string.darkTheme);
+			final int nightMode=AppCompatDelegate.getDefaultNightMode();
+			if(nightMode==AppCompatDelegate.MODE_NIGHT_YES)
+			{
+				menu.findItem(R.id.changeTheme).setTitle(R.string.light_theme);
+			}
+			else
+			{
+				menu.findItem(R.id.changeTheme).setTitle(R.string.dark_theme);
+			}
 		}
 		return true;
 	}
@@ -592,6 +621,14 @@ public class MainActivity extends AppCompatActivity
 	protected void onDestroy()
 	{
 		super.onDestroy();
+		try
+		{
+			FullImage.hideDefaultNotification();
+		}
+		catch(Exception e)
+		{
+			e.printStackTrace();
+		}
 		saveErrorList();
 		saveCurrentTheme();
 	}
@@ -599,24 +636,39 @@ public class MainActivity extends AppCompatActivity
 	@Override
 	public boolean onOptionsItemSelected(@NonNull MenuItem item)
 	{
-		switch(item.getItemId())
+		if(Build.VERSION.SDK_INT >= NIGHTMODEAPI)
 		{
-			case R.id.update:
-				startLinksParser();
-				return true;
-			case R.id.reloadErrorLinks:
-				relaodErrorLinks();
-				return true;
-			case R.id.changeTheme:
-				new Handler().postDelayed(new Runnable()
-				{
-					@Override
-					public void run()
+			switch(item.getItemId())
+			{
+				case R.id.update:
+					startLinksParser();
+					return true;
+				case R.id.reloadErrorLinks:
+					relaodErrorLinks();
+					return true;
+				case R.id.changeTheme:
+					new Handler().postDelayed(new Runnable()
 					{
-						changeTheme();
-					}
-				},500);
-				return true;
+						@Override
+						public void run()
+						{
+							changeTheme();
+						}
+					},500);
+					return true;
+			}
+		}
+		else
+		{
+			switch(item.getItemId())
+			{
+				case R.id.update:
+					startLinksParser();
+					return true;
+				case R.id.reloadErrorLinks:
+					relaodErrorLinks();
+					return true;
+			}
 		}
 		return super.onOptionsItemSelected(item);
 	}
@@ -677,22 +729,37 @@ public class MainActivity extends AppCompatActivity
 	{
 		ImageDownloader.REPEAT_NUM=1;
 		ERROR_LIST.clear();
-		if(imageAdapter!=null)
+		ImageDownloader.callNotifyDataSetChanged();
+	}
+
+	static void resizeMemoryCache()
+	{
+		if(memoryCache!=null)
 		{
-			imageAdapter.notifyDataSetChanged();
+			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP)
+			{
+				memoryCache.resize(getQuantityItemsOnScreen());
+			}
+		}
+		else
+		{
+			initMemoryCache();
 		}
 	}
 
 	public static void saveCurrentTheme()
 	{
-		final int nightMode=AppCompatDelegate.getDefaultNightMode();
-		if(sharedPreferences!=null&&nightMode==AppCompatDelegate.MODE_NIGHT_YES)
+		if(sharedPreferences!=null&&Build.VERSION.SDK_INT >= NIGHTMODEAPI)
 		{
-			sharedPreferences.edit().putBoolean("isNightMode",true).commit();
-		}
-		else if(sharedPreferences!=null&&nightMode==AppCompatDelegate.MODE_NIGHT_NO)
-		{
-			sharedPreferences.edit().putBoolean("isNightMode",false).commit();
+			final int nightMode=AppCompatDelegate.getDefaultNightMode();
+			if(nightMode==AppCompatDelegate.MODE_NIGHT_YES)
+			{
+				sharedPreferences.edit().putBoolean("isNightMode",true).commit();
+			}
+			else if(nightMode==AppCompatDelegate.MODE_NIGHT_NO)
+			{
+				sharedPreferences.edit().putBoolean("isNightMode",false).commit();
+			}
 		}
 	}
 
@@ -720,14 +787,12 @@ public class MainActivity extends AppCompatActivity
 		if(isConnected)
 		{
 			@NonNull
-			final ProgressDialog progressDialog=Build.VERSION.SDK_INT >= ALERTDIALOGSTYLEAPI?new ProgressDialog(MainActivity.this,R.style.AlertDialogStyle):new ProgressDialog(MainActivity.this);
-			progressDialog.setMessage("Обновление данных. Подождите...");
-			progressDialog.setCancelable(false);
+			final AlertDialog.Builder builder=new AlertDialog.Builder(MainActivity.this,R.style.AlertDialogTheme);
+			builder.setView(R.layout.progress_bar);
+			builder.setCancelable(false);
+			@NonNull
+			final AlertDialog progressDialog=builder.create();
 			progressDialog.show();
-			clearData();
-			makeDirs();
-			ImageDownloader.ThreadsCounter.resetThreadsCoutner();
-			ImageDownloader.REPEAT_NUM=3;
 			@NonNull
 			final LinksParser linksParser=new LinksParser(progressDialog);
 			//noinspection AnonymousInnerClassMayBeStatic
@@ -736,10 +801,11 @@ public class MainActivity extends AppCompatActivity
 				@Override
 				public void run()
 				{
-					if(memoryCache!=null)
-					{
-						memoryCache.evictAll();
-					}
+					clearData();
+					makeDirs();
+					ImageDownloader.ThreadsCounter.resetThreadsCoutner();
+					ImageDownloader.REPEAT_NUM=3;
+					clearMemoryCache();
 					linksParser.start();
 				}
 			}.start();
@@ -771,15 +837,18 @@ public class MainActivity extends AppCompatActivity
 
 	public void updateGallery()
 	{
+		//noinspection AnonymousInnerClassMayBeStatic
 		runOnUiThread(new Runnable()
 		{
 			@Override
 			public void run()
 			{
-				gridView=findViewById(R.id.GridView);
-				gridView.setAdapter(null);
-				imageAdapter=new ImageAdapter(getBaseContext());
-				gridView.setAdapter(imageAdapter);
+				if(gridView!=null)
+				{
+					gridView.setAdapter(null);
+					imageAdapter=new ImageAdapter();
+					gridView.setAdapter(imageAdapter);
+				}
 			}
 		});
 	}
@@ -810,10 +879,7 @@ public class MainActivity extends AppCompatActivity
 					break;
 				case DialogInterface.BUTTON_NEUTRAL:
 					ERROR_LIST.remove(ImageAdapter.URLS.get(position));
-					if(imageAdapter!=null)
-					{
-						imageAdapter.notifyDataSetChanged();
-					}
+					ImageDownloader.callNotifyDataSetChanged();
 					break;
 			}
 		}
@@ -822,11 +888,11 @@ public class MainActivity extends AppCompatActivity
 	class LinksParser extends Thread
 	{
 		@NonNull
-		final ProgressDialog progressDialog;
+		final AlertDialog progressDialog;
 
-		LinksParser(@NonNull ProgressDialog dialog)
+		LinksParser(@NonNull AlertDialog progressDialog)
 		{
-			progressDialog=dialog;
+			this.progressDialog=progressDialog;
 		}
 
 		@Override
@@ -859,7 +925,10 @@ public class MainActivity extends AppCompatActivity
 				{
 					e.printStackTrace();
 				}
-				downloader.close();
+				finally
+				{
+					downloader.close();
+				}
 			}
 			catch(Exception e)
 			{
@@ -871,7 +940,7 @@ public class MainActivity extends AppCompatActivity
 	}
 
 	@RequiresApi(api=Build.VERSION_CODES.LOLLIPOP)
-	class NetworkCallback extends ConnectivityManager.NetworkCallback
+	static class NetworkCallback extends ConnectivityManager.NetworkCallback
 	{
 		@Override
 		public void onAvailable(@NonNull Network network)
@@ -879,17 +948,7 @@ public class MainActivity extends AppCompatActivity
 			super.onAvailable(network);
 			isConnected=true;
 			ImageDownloader.NO_INTERNET_LINKS.clear();
-			if(MainActivity.imageAdapter!=null)
-			{
-				runOnUiThread(new Runnable()
-				{
-					@Override
-					public void run()
-					{
-						imageAdapter.notifyDataSetChanged();
-					}
-				});
-			}
+			ImageDownloader.callNotifyDataSetChanged();
 		}
 
 		@Override
