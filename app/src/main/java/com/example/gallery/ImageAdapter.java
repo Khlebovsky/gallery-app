@@ -1,6 +1,5 @@
 package com.example.gallery;
 
-import android.content.Context;
 import android.graphics.Bitmap;
 import android.view.View;
 import android.view.ViewGroup;
@@ -26,23 +25,7 @@ public class ImageAdapter extends BaseAdapter
 
 	public ImageAdapter()
 	{
-		URLS.clear();
-		try
-		{
-			@NonNull
-			final BufferedReader bufferedReader=new BufferedReader(new FileReader(MainActivity.linksFile));
-			String url;
-			while((url=bufferedReader.readLine())!=null)
-			{
-				URLS.add(url);
-				MainActivity.LINKS_STATUS.put(url,"progress");
-			}
-			bufferedReader.close();
-		}
-		catch(Exception e)
-		{
-			e.printStackTrace();
-		}
+		ImageDownloader.updateUrlsList();
 	}
 
 	@Override

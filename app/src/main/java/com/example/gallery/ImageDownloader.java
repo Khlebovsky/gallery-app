@@ -9,11 +9,7 @@ import android.os.Message;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -68,11 +64,74 @@ public final class ImageDownloader
 		}
 	}
 
+	public static void addStringToLinksfile(@NonNull final String url)
+	{
+		if(MainActivity.linksFile!=null)
+		{
+			@NonNull
+			final ArrayList<String> LinksFileString=new ArrayList<>();
+			try
+			{
+				@NonNull
+				final BufferedReader bufferedReader=new BufferedReader(new FileReader(MainActivity.linksFile));
+				String string;
+				while((string=bufferedReader.readLine())!=null)
+				{
+					LinksFileString.add(string);
+				}
+				LinksFileString.add(url);
+				bufferedReader.close();
+				@NonNull
+				final BufferedWriter bufferedWriter=new BufferedWriter(new FileWriter(MainActivity.linksFile));
+				for(final String str : LinksFileString)
+				{
+					bufferedWriter.write(str+'\n');
+				}
+				bufferedWriter.flush();
+				bufferedReader.close();
+			}
+			catch(Exception e)
+			{
+				e.printStackTrace();
+			}
+			callNotifyDataSetChanged();
+		}
+	}
+
 	public static void callNotifyDataSetChanged()
 	{
 		@NonNull
 		final Message message=ImageDownloader.GALLERY_HANDLER.obtainMessage();
 		ImageDownloader.GALLERY_HANDLER.sendMessage(message);
+	}
+
+	static void deleteImageFromDisk(@Nullable final String fileName)
+	{
+		if(fileName!=null)
+		{
+			try
+			{
+				@NonNull
+				final File fullImage=new File(MainActivity.bytes,fileName);
+				if(fullImage.exists())
+				{
+					//noinspection ResultOfMethodCallIgnored
+					fullImage.delete();
+				}
+				@NonNull
+				final File preview=new File(MainActivity.previews,fileName);
+				if(preview.exists())
+				{
+					//noinspection ResultOfMethodCallIgnored
+					preview.delete();
+				}
+				ImageDownloader.FILE_NAMES.remove(fileName);
+			}
+			catch(Exception e)
+			{
+				e.printStackTrace();
+			}
+		}
 	}
 
 	static void downloadImageFromSharing(@NonNull final String url,@NonNull final ImageView imageView,@NonNull final Context context)
@@ -190,6 +249,7 @@ public final class ImageDownloader
 				}
 				catch(Exception e)
 				{
+					e.printStackTrace();
 					SharedImage.showSharedImageAlertDialog("Unknown error");
 				}
 			}
@@ -473,24 +533,28 @@ public final class ImageDownloader
 		{
 			return bitmap;
 		}
-		if(FILE_NAMES.containsKey(url)&&URLS_IN_PROGRESS.contains(url))
+		if(ThreadsCounter.getThreadCount()<MAX_THREAD_NUM)
 		{
-			URLS_IN_PROGRESS.remove(url);
-			if(MainActivity.memoryCache!=null)
+			if(FILE_NAMES.containsKey(url)&&URLS_IN_PROGRESS.contains(url))
 			{
-				MainActivity.memoryCache.remove(url);
+				URLS_IN_PROGRESS.remove(url);
+				if(MainActivity.memoryCache!=null)
+				{
+					MainActivity.memoryCache.remove(url);
+				}
+				callNotifyDataSetChanged();
 			}
-		}
-		if(ThreadsCounter.getThreadCount()<MAX_THREAD_NUM&&!URLS_IN_PROGRESS.contains(url))
-		{
-			try
+			if(!URLS_IN_PROGRESS.contains(url))
 			{
-				URLS_IN_PROGRESS.add(url);
-				downloadOrGetImageFromDisk(url);
-			}
-			catch(Exception e)
-			{
-				e.printStackTrace();
+				try
+				{
+					URLS_IN_PROGRESS.add(url);
+					downloadOrGetImageFromDisk(url);
+				}
+				catch(Exception e)
+				{
+					e.printStackTrace();
+				}
 			}
 		}
 		return null;
@@ -529,7 +593,64 @@ public final class ImageDownloader
 		}
 	}
 
-	public static String urlToHashMD5(@NonNull String url)
+	public static void removeStringFromLinksfile(int numToDelete)
+	{
+		if(MainActivity.linksFile!=null)
+		{
+			@NonNull
+			final ArrayList<String> LinksFileString=new ArrayList<>();
+			try
+			{
+				@NonNull
+				final BufferedReader bufferedReader=new BufferedReader(new FileReader(MainActivity.linksFile));
+				String string;
+				while((string=bufferedReader.readLine())!=null)
+				{
+					if(!string.equals(ImageAdapter.URLS.get(numToDelete)))
+					{
+						LinksFileString.add(string);
+					}
+				}
+				bufferedReader.close();
+				@NonNull
+				final BufferedWriter bufferedWriter=new BufferedWriter(new FileWriter(MainActivity.linksFile));
+				for(final String str : LinksFileString)
+				{
+					bufferedWriter.write(str+'\n');
+				}
+				bufferedWriter.flush();
+				bufferedReader.close();
+			}
+			catch(Exception e)
+			{
+				e.printStackTrace();
+			}
+			callNotifyDataSetChanged();
+		}
+	}
+
+	public static void updateUrlsList()
+	{
+		ImageAdapter.URLS.clear();
+		try
+		{
+			@NonNull
+			final BufferedReader bufferedReader=new BufferedReader(new FileReader(MainActivity.linksFile));
+			String url;
+			while((url=bufferedReader.readLine())!=null)
+			{
+				ImageAdapter.URLS.add(url);
+				MainActivity.LINKS_STATUS.put(url,"progress");
+			}
+			bufferedReader.close();
+		}
+		catch(Exception e)
+		{
+			e.printStackTrace();
+		}
+	}
+
+	public static String urlToHashMD5(@NonNull final String url)
 	{
 		try
 		{
@@ -540,9 +661,9 @@ public final class ImageDownloader
 			final byte[] messageDigest=digest.digest();
 			@NonNull
 			final StringBuilder hexStringBuilder=new StringBuilder();
-			for(final byte b : messageDigest)
+			for(final byte messageByte : messageDigest)
 			{
-				hexStringBuilder.append(Integer.toHexString(0xFF&b));
+				hexStringBuilder.append(Integer.toHexString(0xFF&messageByte));
 			}
 			return hexStringBuilder.toString();
 		}
@@ -592,11 +713,6 @@ public final class ImageDownloader
 		public static synchronized void increaseThreadsCounter()
 		{
 			currentThreadNum++;
-		}
-
-		public static synchronized void resetThreadsCoutner()
-		{
-			currentThreadNum=0;
 		}
 	}
 }

@@ -5,13 +5,9 @@ import android.os.Looper;
 import android.os.Message;
 import android.widget.Toast;
 import com.muddzdev.styleabletoast.StyleableToast;
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.util.ArrayList;
+import java.io.*;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import okhttp3.*;
 
 public final class ClientServer
@@ -106,39 +102,11 @@ public final class ClientServer
 		@Override
 		public void onResponse(@NonNull Call call,@NonNull Response response)
 		{
-			if(MainActivity.linksFile!=null)
-			{
-				@NonNull
-				final ArrayList<String> LinksFileString=new ArrayList<>();
-				try
-				{
-					@NonNull
-					final BufferedReader bufferedReader=new BufferedReader(new FileReader(MainActivity.linksFile));
-					String string;
-					while((string=bufferedReader.readLine())!=null)
-					{
-						LinksFileString.add(string);
-					}
-					LinksFileString.add(url);
-					bufferedReader.close();
-					@NonNull
-					final BufferedWriter bufferedWriter=new BufferedWriter(new FileWriter(MainActivity.linksFile));
-					for(final String str : LinksFileString)
-					{
-						bufferedWriter.write(str+'\n');
-					}
-					bufferedWriter.flush();
-					bufferedReader.close();
-				}
-				catch(Exception e)
-				{
-					e.printStackTrace();
-				}
-			}
+			ImageDownloader.addStringToLinksfile(url);
+			ImageAdapter.URLS.add(url);
 			@NonNull
 			final Message message=REQUEST_HANDLER.obtainMessage(0,1,1,url);
 			REQUEST_HANDLER.sendMessage(message);
-			ImageAdapter.URLS.add(url);
 			ImageDownloader.callNotifyDataSetChanged();
 		}
 	}
@@ -163,41 +131,18 @@ public final class ClientServer
 		@Override
 		public void onResponse(@NonNull Call call,@NonNull Response response)
 		{
-			if(MainActivity.linksFile!=null)
-			{
-				@NonNull
-				final ArrayList<String> LinksFileString=new ArrayList<>();
-				try
-				{
-					@NonNull
-					final BufferedReader bufferedReader=new BufferedReader(new FileReader(MainActivity.linksFile));
-					String string;
-					while((string=bufferedReader.readLine())!=null)
-					{
-						if(!string.equals(ImageAdapter.URLS.get(numToDelete)))
-						{
-							LinksFileString.add(string);
-						}
-					}
-					bufferedReader.close();
-					@NonNull
-					final BufferedWriter bufferedWriter=new BufferedWriter(new FileWriter(MainActivity.linksFile));
-					for(final String str : LinksFileString)
-					{
-						bufferedWriter.write(str+'\n');
-					}
-					bufferedWriter.flush();
-					bufferedReader.close();
-				}
-				catch(Exception e)
-				{
-					e.printStackTrace();
-				}
-			}
 			@NonNull
-			final Message message=REQUEST_HANDLER.obtainMessage(0,2,2,ImageAdapter.URLS.get(numToDelete));
-			REQUEST_HANDLER.sendMessage(message);
+			final String urlToDelete=ImageAdapter.URLS.get(numToDelete);
+			@Nullable
+			final String fileName=ImageDownloader.FILE_NAMES.get(urlToDelete);
+			ImageDownloader.removeStringFromLinksfile(numToDelete);
+			ImageDownloader.deleteImageFromDisk(fileName);
+			ImageDownloader.FILE_NAMES.remove(urlToDelete);
+			MainActivity.LINKS_STATUS.remove(urlToDelete);
 			ImageAdapter.URLS.remove(numToDelete);
+			@NonNull
+			final Message message=REQUEST_HANDLER.obtainMessage(0,2,2,urlToDelete);
+			REQUEST_HANDLER.sendMessage(message);
 			ImageDownloader.callNotifyDataSetChanged();
 		}
 	}

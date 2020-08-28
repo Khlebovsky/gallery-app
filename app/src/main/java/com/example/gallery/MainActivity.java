@@ -10,6 +10,7 @@ import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Point;
+import android.media.Image;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkInfo;
@@ -22,9 +23,11 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.GridView;
+import android.widget.Toast;
 import com.google.android.gms.security.ProviderInstaller;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import com.muddzdev.styleabletoast.StyleableToast;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileWriter;
@@ -49,8 +52,6 @@ public class MainActivity extends AppCompatActivity
 	@NonNull
 	public static final HashMap<String,String> LINKS_STATUS=new HashMap<>();
 	@NonNull
-	public static final ArrayList<String> URLS=new ArrayList<>();
-	@NonNull
 	public static final HashMap<String,String> ERROR_LIST=new HashMap<>();
 	@Nullable
 	public static File cache;
@@ -59,7 +60,7 @@ public class MainActivity extends AppCompatActivity
 	@Nullable
 	public static File bytes;
 	@Nullable
-	public static File share;
+	public static File textfiles;
 	@Nullable
 	public static LruCache<String,Bitmap> memoryCache;
 	@Nullable
@@ -78,6 +79,7 @@ public class MainActivity extends AppCompatActivity
 	static int height;
 	static float imageWidth;
 	static boolean isThemeChanged;
+	static boolean isCheckedUpdates;
 	@Nullable
 	Parcelable state;
 	@Nullable
@@ -114,20 +116,81 @@ public class MainActivity extends AppCompatActivity
 		recreate();
 	}
 
-	public static void clearData()
+	void checkDisk()
 	{
-		ERROR_LIST.clear();
-		ImageDownloader.FILE_NAMES.clear();
-		LINKS_STATUS.clear();
-		URLS.clear();
-		ImageAdapter.URLS.clear();
+		new Thread()
+		{
+			@Override
+			public void run()
+			{
+				try
+				{
+					@NonNull
+					final ArrayList<String> diskFiles=new ArrayList<>();
+					for(final String string : ImageAdapter.URLS)
+					{
+						diskFiles.add(ImageDownloader.urlToHashMD5(string));
+					}
+					boolean isUpdates=false;
+					if(bytes!=null&&bytes.exists())
+					{
+						@NonNull
+						final String parentDir=bytes+"/";
+						@Nullable
+						final File[] files=bytes.listFiles();
+						if(files!=null&&files.length!=0)
+						{
+							for(final File file : files)
+							{
+								@NonNull
+								final String fileName=file.toString().substring(parentDir.length());
+								if(!diskFiles.contains(fileName))
+								{
+									isUpdates=true;
+									ImageDownloader.deleteImageFromDisk(fileName);
+								}
+							}
+						}
+					}
+					if(isUpdates)
+					{
+						//noinspection AnonymousInnerClassMayBeStatic
+						runOnUiThread(new Runnable()
+						{
+							@Override
+							public void run()
+							{
+								StyleableToast.makeText(context,"Файлы на диске оптимизмрованы",Toast.LENGTH_SHORT,R.style.ToastStyle).show();
+							}
+						});
+					}
+				}
+				catch(Exception e)
+				{
+					e.printStackTrace();
+				}
+			}
+		}.start();
 	}
 
-	public static void clearMemoryCache()
+	void checkUpdates()
 	{
-		if(memoryCache!=null)
+		if(isConnected)
 		{
-			memoryCache.evictAll();
+			@NonNull
+			final AlertDialog.Builder builder=new AlertDialog.Builder(MainActivity.this,R.style.AlertDialogTheme);
+			builder.setView(R.layout.progress_bar);
+			builder.setCancelable(false);
+			@NonNull
+			final AlertDialog progressDialog=builder.create();
+			progressDialog.show();
+			@NonNull
+			final CheckUpdatesThread checkUpdatesThread=new CheckUpdatesThread(progressDialog);
+			checkUpdatesThread.start();
+		}
+		else
+		{
+			alertNoInternet();
 		}
 	}
 
@@ -187,10 +250,8 @@ public class MainActivity extends AppCompatActivity
 		}
 		previews=new File(cache,"previews");
 		bytes=new File(cache,"bytes");
-		share=new File(cache,"share");
-		@NonNull
-		final File textfilesdir=new File(cache,"textfiles");
-		linksFile=new File(textfilesdir,"links.txt");
+		textfiles=new File(cache,"textfiles");
+		linksFile=new File(textfiles,"links.txt");
 	}
 
 	void initGooglePlayServices()
@@ -332,92 +393,6 @@ public class MainActivity extends AppCompatActivity
 				//noinspection ResultOfMethodCallIgnored
 				bytes.mkdirs();
 			}
-			if(share!=null&&!share.exists())
-			{
-				//noinspection ResultOfMethodCallIgnored
-				share.mkdirs();
-			}
-			if(previews!=null&&previews.exists())
-			{
-				try
-				{
-					@Nullable
-					final File[] files=previews.listFiles();
-					if(files!=null&&files.length!=0)
-					{
-						for(final File file : files)
-						{
-							//noinspection ResultOfMethodCallIgnored
-							file.delete();
-						}
-					}
-				}
-				catch(Exception e)
-				{
-					e.printStackTrace();
-				}
-			}
-			if(bytes!=null&&bytes.exists())
-			{
-				try
-				{
-					@Nullable
-					final File[] files=bytes.listFiles();
-					if(files!=null&&files.length!=0)
-					{
-						for(final File file : files)
-						{
-							//noinspection ResultOfMethodCallIgnored
-							file.delete();
-						}
-					}
-				}
-				catch(Exception e)
-				{
-					e.printStackTrace();
-				}
-			}
-			if(share!=null&&share.exists())
-			{
-				try
-				{
-					@Nullable
-					final File[] files=share.listFiles();
-					if(files!=null&&files.length!=0)
-					{
-						for(final File file : files)
-						{
-							//noinspection ResultOfMethodCallIgnored
-							file.delete();
-						}
-					}
-				}
-				catch(Exception e)
-				{
-					e.printStackTrace();
-				}
-			}
-			try
-			{
-				@Nullable
-				File[] files=null;
-				if(cache!=null)
-				{
-					files=cache.listFiles();
-				}
-				if(files!=null)
-				{
-					for(final File file : files)
-					{
-						//noinspection ResultOfMethodCallIgnored
-						file.delete();
-					}
-				}
-			}
-			catch(Exception e)
-			{
-				e.printStackTrace();
-			}
 		}
 		catch(Exception e)
 		{
@@ -425,22 +400,23 @@ public class MainActivity extends AppCompatActivity
 		}
 		try
 		{
-			@NonNull
-			final File textfilesdir=new File(cache,"textfiles");
-			if(!textfilesdir.exists())
+			if(linksFile!=null&&!linksFile.exists())
 			{
-				//noinspection ResultOfMethodCallIgnored
-				textfilesdir.mkdirs();
+				@NonNull
+				final File textfilesdir=new File(cache,"textfiles");
+				if(!textfilesdir.exists())
+				{
+					//noinspection ResultOfMethodCallIgnored
+					textfilesdir.mkdirs();
+				}
+				@NonNull
+				final File linksfile=new File(textfilesdir,"links.txt");
+				if(!linksfile.exists())
+				{
+					//noinspection ResultOfMethodCallIgnored
+					linksfile.createNewFile();
+				}
 			}
-			@NonNull
-			final File linksfile=new File(textfilesdir,"links.txt");
-			if(linksfile.exists())
-			{
-				//noinspection ResultOfMethodCallIgnored
-				linksfile.delete();
-			}
-			//noinspection ResultOfMethodCallIgnored
-			linksfile.createNewFile();
 		}
 		catch(Exception e)
 		{
@@ -487,42 +463,28 @@ public class MainActivity extends AppCompatActivity
 		initStatic();
 		initNetworkStatusListener();
 		initCacheDirs(context);
+		makeDirs();
 		getErrorLinksFromSharedPrefs();
 		initMemoryCache();
 		initGooglePlayServices();
 		ImageDownloader.initStatic();
 		if(isConnected)
 		{
-			try
+			if(isCheckedUpdates)
 			{
-				if(previews!=null)
-				{
-					@Nullable
-					final File[] files=previews.listFiles();
-					if(files!=null&&files.length!=0)
-					{
-						updateGallery();
-					}
-					else
-					{
-						startLinksParser();
-					}
-				}
-				else
-				{
-					startLinksParser();
-				}
+				updateAdapter();
 			}
-			catch(Exception e)
+			else
 			{
-				e.printStackTrace();
-				startLinksParser();
+				updateAdapter();
+				checkUpdates();
+				isCheckedUpdates=true;
 			}
 		}
 		else
 		{
 			alertNoInternet();
-			updateGallery();
+			updateAdapter();
 		}
 		if(gridView!=null)
 		{
@@ -641,7 +603,7 @@ public class MainActivity extends AppCompatActivity
 			switch(item.getItemId())
 			{
 				case R.id.update:
-					startLinksParser();
+					checkUpdates();
 					return true;
 				case R.id.reloadErrorLinks:
 					relaodErrorLinks();
@@ -663,7 +625,7 @@ public class MainActivity extends AppCompatActivity
 			switch(item.getItemId())
 			{
 				case R.id.update:
-					startLinksParser();
+					checkUpdates();
 					return true;
 				case R.id.reloadErrorLinks:
 					relaodErrorLinks();
@@ -782,40 +744,6 @@ public class MainActivity extends AppCompatActivity
 		}
 	}
 
-	public void startLinksParser()
-	{
-		if(isConnected)
-		{
-			@NonNull
-			final AlertDialog.Builder builder=new AlertDialog.Builder(MainActivity.this,R.style.AlertDialogTheme);
-			builder.setView(R.layout.progress_bar);
-			builder.setCancelable(false);
-			@NonNull
-			final AlertDialog progressDialog=builder.create();
-			progressDialog.show();
-			@NonNull
-			final LinksParser linksParser=new LinksParser(progressDialog);
-			//noinspection AnonymousInnerClassMayBeStatic
-			new Thread()
-			{
-				@Override
-				public void run()
-				{
-					clearData();
-					makeDirs();
-					ImageDownloader.ThreadsCounter.resetThreadsCoutner();
-					ImageDownloader.REPEAT_NUM=3;
-					clearMemoryCache();
-					linksParser.start();
-				}
-			}.start();
-		}
-		else
-		{
-			alertNoInternet();
-		}
-	}
-
 	private void unregiesterNetworkStateChecker(@NonNull ConnectivityManager connectivityManager)
 	{
 		try
@@ -835,9 +763,8 @@ public class MainActivity extends AppCompatActivity
 		}
 	}
 
-	public void updateGallery()
+	public void updateAdapter()
 	{
-		//noinspection AnonymousInnerClassMayBeStatic
 		runOnUiThread(new Runnable()
 		{
 			@Override
@@ -845,9 +772,17 @@ public class MainActivity extends AppCompatActivity
 			{
 				if(gridView!=null)
 				{
-					gridView.setAdapter(null);
-					imageAdapter=new ImageAdapter();
-					gridView.setAdapter(imageAdapter);
+					if(gridView.getAdapter()==null)
+					{
+						gridView.setAdapter(null);
+						imageAdapter=new ImageAdapter();
+						gridView.setAdapter(imageAdapter);
+						checkDisk();
+					}
+					else
+					{
+						ImageDownloader.callNotifyDataSetChanged();
+					}
 				}
 			}
 		});
@@ -885,12 +820,12 @@ public class MainActivity extends AppCompatActivity
 		}
 	}
 
-	class LinksParser extends Thread
+	private class CheckUpdatesThread extends Thread
 	{
 		@NonNull
 		final AlertDialog progressDialog;
 
-		LinksParser(@NonNull AlertDialog progressDialog)
+		CheckUpdatesThread(@NonNull final AlertDialog progressDialog)
 		{
 			this.progressDialog=progressDialog;
 		}
@@ -898,12 +833,13 @@ public class MainActivity extends AppCompatActivity
 		@Override
 		public void run()
 		{
+			boolean isError=false;
 			try
 			{
 				@NonNull
-				final FileWriter downloader=new FileWriter(linksFile);
-				@NonNull
 				final URL url=new URL(IMAGESURL);
+				@NonNull
+				final ArrayList<String> serverURLS=new ArrayList<>();
 				try
 				{
 					@NonNull
@@ -914,27 +850,89 @@ public class MainActivity extends AppCompatActivity
 					final Response response=call.execute();
 					@NonNull
 					final BufferedReader bufferedReader=new BufferedReader(response.body()!=null?response.body().charStream():null);
+					@Nullable
 					String line;
 					while((line=bufferedReader.readLine())!=null)
 					{
-						downloader.append(line).append("\n");
-						URLS.add(line);
+						serverURLS.add(line);
 					}
+					boolean isUpdated=false;
+					if(!serverURLS.equals(ImageAdapter.URLS))
+					{
+						@NonNull
+						final ArrayList<String> urlsToDelete=new ArrayList<>();
+						for(final String string : ImageAdapter.URLS)
+						{
+							if(!serverURLS.contains(string))
+							{
+								urlsToDelete.add(string);
+							}
+						}
+						ImageAdapter.URLS.clear();
+						for(final String string : serverURLS)
+						{
+							ImageAdapter.URLS.add(string);
+						}
+						ImageDownloader.callNotifyDataSetChanged();
+						if(!urlsToDelete.isEmpty())
+						{
+							for(final String urlToDelete : urlsToDelete)
+							{
+								@Nullable
+								final String fileName=ImageDownloader.FILE_NAMES.get(urlToDelete);
+								ImageDownloader.deleteImageFromDisk(fileName);
+							}
+						}
+						try
+						{
+							@NonNull
+							final FileWriter fileWriter=new FileWriter(linksFile);
+							for(final String string : serverURLS)
+							{
+								fileWriter.write(string+'\n');
+							}
+							fileWriter.flush();
+							fileWriter.close();
+						}
+						catch(Exception e)
+						{
+							e.printStackTrace();
+						}
+						isUpdated=true;
+					}
+					@NonNull
+					final String updateResult=isUpdated?"Данные обновлены":"Обновлений не обнаружено";
+					runOnUiThread(new Runnable()
+					{
+						@Override
+						public void run()
+						{
+							StyleableToast.makeText(context,updateResult,Toast.LENGTH_SHORT,R.style.ToastStyle).show();
+						}
+					});
 				}
 				catch(Exception e)
 				{
+					isError=true;
 					e.printStackTrace();
-				}
-				finally
-				{
-					downloader.close();
 				}
 			}
 			catch(Exception e)
 			{
+				isError=true;
 				e.printStackTrace();
 			}
-			updateGallery();
+			if(isError)
+			{
+				runOnUiThread(new Runnable()
+				{
+					@Override
+					public void run()
+					{
+						StyleableToast.makeText(context,"Ошибка обновления данных",Toast.LENGTH_SHORT,R.style.ToastStyle).show();
+					}
+				});
+			}
 			progressDialog.dismiss();
 		}
 	}

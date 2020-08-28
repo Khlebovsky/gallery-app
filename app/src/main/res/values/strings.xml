@@ -1,6 +1,5 @@
 <resources>
 	<string name="app_name">Gallery</string>
-	<string name="home">Назад</string>
 	<string name="update_data">Обновить данные</string>
 	<string name="update_error_links">Обновить ссылки с ошибками</string>
 	<string name="dark_theme">Включить темную тему</string>

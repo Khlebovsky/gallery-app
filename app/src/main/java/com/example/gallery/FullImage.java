@@ -12,37 +12,46 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.util.DisplayMetrics;
+import android.util.Log;
 import android.view.*;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import com.ortiz.touchview.TouchImageView;
-import java.io.File;
-import java.io.FileOutputStream;
+import java.io.*;
 import java.util.Timer;
 import java.util.TimerTask;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
+import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
-import androidx.core.content.FileProvider;
 
 public class FullImage extends AppCompatActivity
 {
+	static final int MIN_LOCATION_Y=-350;
+	static final int MAX_LOCATION_Y=450;
 	static boolean isFullScreen;
 	static int num;
 	static GestureDetector gestureDetector;
 	static TouchImageView touchImageView;
 	static String url;
 	static NotificationManagerCompat notificationManagerCompat;
+	static float dY;
+	static long downTime;
+	static float downLength;
 	private static final int CUTOUTAPI=28;
 	private static final int NOTIFICATIONCHANNELAPI=26;
 	private static final int IMPROVEDFULLSCREENAPI=19;
 	@NonNull
 	private static final String LOADED_IMAGE_TAG="loaded";
 	private static final int NOTIFY_ID=101;
+	@NonNull
+	private static final String SHARE_INTENT_TYPE="text/plain";
 
 	void createNotificationChannel()
 	{
@@ -121,36 +130,27 @@ public class FullImage extends AppCompatActivity
 		return bitmap;
 	}
 
-	Uri getSavedImageUri()
-	{
-		try
-		{
-			@NonNull
-			final Uri uri=FileProvider.getUriForFile(getBaseContext(),BuildConfig.APPLICATION_ID+".provider",getShareImagePath());
-			return uri;
-		}
-		catch(Exception e)
-		{
-			e.printStackTrace();
-		}
-		return null;
-	}
-
-	Intent getShareImageIntent()
+	static Intent getShareImageIntent()
 	{
 		@NonNull
 		final Intent actionShareIntent=new Intent(Intent.ACTION_SEND);
-		actionShareIntent.putExtra(Intent.EXTRA_STREAM,getSavedImageUri());
+		actionShareIntent.putExtra(Intent.EXTRA_TEXT,url);
 		actionShareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-		actionShareIntent.setType("image/*");
+		actionShareIntent.setType(SHARE_INTENT_TYPE);
 		return actionShareIntent;
 	}
 
-	static File getShareImagePath()
+	void hideAndCloseImage()
 	{
-		@Nullable
-		final File name=new File(MainActivity.share,ImageDownloader.urlToHashMD5(url)+".png");
-		return name;
+		touchImageView.animate().alpha(0).setDuration(50).start();
+		new Handler().postDelayed(new Runnable()
+		{
+			@Override
+			public void run()
+			{
+				finish();
+			}
+		},50);
 	}
 
 	public static void hideDefaultNotification()
@@ -193,65 +193,6 @@ public class FullImage extends AppCompatActivity
 		}
 	}
 
-	GestureDetector initGestureDetector()
-	{
-		//noinspection deprecation
-		return new GestureDetector(new GestureDetector.SimpleOnGestureListener()
-		{
-			@NonNull
-			private final SwipeDetector swipeDetector=new SwipeDetector();
-
-			@Override
-			public boolean onFling(MotionEvent e1,MotionEvent e2,float velocityX,float velocityY)
-			{
-				try
-				{
-					if(swipeDetector.isSwipeDown(e1,e2,velocityY))
-					{
-						return false;
-					}
-					else if(swipeDetector.isSwipeUp(e1,e2,velocityY))
-					{
-						if(touchImageView.getCurrentZoom()==1)
-						{
-							finish();
-							return true;
-						}
-						return false;
-					}
-					else if(swipeDetector.isSwipeLeft(e1,e2,velocityX))
-					{
-						return false;
-					}
-					else if(swipeDetector.isSwipeRight(e1,e2,velocityX))
-					{
-						return false;
-					}
-				}
-				catch(Exception ignored)
-				{
-				}
-				return false;
-			}
-
-			@Override
-			public boolean onSingleTapConfirmed(MotionEvent e)
-			{
-				if(isFullScreen)
-				{
-					showSystemUI();
-					isFullScreen=false;
-				}
-				else
-				{
-					hideSystemUI();
-					isFullScreen=true;
-				}
-				return super.onSingleTapConfirmed(e);
-			}
-		});
-	}
-
 	void initSettings()
 	{
 		initFlags();
@@ -264,7 +205,7 @@ public class FullImage extends AppCompatActivity
 	void initStatic()
 	{
 		touchImageView=findViewById(R.id.touch_image_view);
-		gestureDetector=initGestureDetector();
+		gestureDetector=new GestureDetector(this,new ImageGestureDetector());
 	}
 
 	void loadImage(@Nullable final File path)
@@ -288,6 +229,7 @@ public class FullImage extends AppCompatActivity
 		initSettings();
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_full_image);
+		setHomeButton();
 		initStatic();
 		@NonNull
 		final Intent intent=getIntent();
@@ -334,6 +276,9 @@ public class FullImage extends AppCompatActivity
 	{
 		switch(item.getItemId())
 		{
+			case android.R.id.home:
+				finish();
+				return true;
 			case R.id.shareImage:
 				try
 				{
@@ -349,6 +294,17 @@ public class FullImage extends AppCompatActivity
 				return true;
 		}
 		return super.onOptionsItemSelected(item);
+	}
+
+	void setHomeButton()
+	{
+		@Nullable
+		final ActionBar actionBar=getSupportActionBar();
+		if(actionBar!=null)
+		{
+			actionBar.setHomeButtonEnabled(true);
+			actionBar.setDisplayHomeAsUpEnabled(true);
+		}
 	}
 
 	void showDefaultNotification()
@@ -400,13 +356,21 @@ public class FullImage extends AppCompatActivity
 
 	void showErrorAlertDialog(@NonNull final String error)
 	{
-		@NonNull
-		final AlertDialog.Builder builder=new AlertDialog.Builder(FullImage.this,R.style.AlertDialogTheme);
-		builder.setTitle("Ошибка");
-		builder.setMessage("Ошибка: \n"+error);
-		builder.setPositiveButton("Ок",new ErrorDialogOnClickListener());
-		builder.setCancelable(false);
-		builder.show();
+		try
+		{
+			@NonNull
+			final AlertDialog.Builder builder=new AlertDialog.Builder(FullImage.this,R.style.AlertDialogTheme);
+			builder.setTitle("Ошибка");
+			builder.setMessage("Ошибка: \n"+error);
+			builder.setPositiveButton("Ок",new ErrorDialogOnClickListener());
+			builder.setCancelable(false);
+			builder.show();
+		}
+		catch(Exception e)
+		{
+			e.printStackTrace();
+			finish();
+		}
 	}
 
 	void showSystemUI()
@@ -468,35 +432,6 @@ public class FullImage extends AppCompatActivity
 				final BitmapFactory.Options bitmapOptions=new BitmapFactory.Options();
 				bitmapOptions.inSampleSize=reductionRatio;
 				bitmap=BitmapFactory.decodeFile(path,bitmapOptions);
-				if(bitmap!=null)
-				{
-					@NonNull
-					final Bitmap finalBitmap=bitmap;
-					new Thread()
-					{
-						@Override
-						public void run()
-						{
-							try
-							{
-								if(MainActivity.share!=null&&!MainActivity.share.exists())
-								{
-									//noinspection ResultOfMethodCallIgnored
-									MainActivity.share.mkdirs();
-								}
-								@NonNull
-								final FileOutputStream fileOutputStream=new FileOutputStream(getShareImagePath());
-								finalBitmap.compress(Bitmap.CompressFormat.PNG,100,fileOutputStream);
-								fileOutputStream.flush();
-								fileOutputStream.close();
-							}
-							catch(Exception e)
-							{
-								e.printStackTrace();
-							}
-						}
-					}.start();
-				}
 			}
 			catch(Exception e)
 			{
@@ -593,11 +528,95 @@ public class FullImage extends AppCompatActivity
 		}
 	}
 
-	static class ImageOnTouchListener implements View.OnTouchListener
+	class ImageGestureDetector extends GestureDetector.SimpleOnGestureListener
+	{
+		@NonNull
+		static final String TAG="ImageGestureDetector";
+		static final int MIN_FLING_LENGTH=600;
+		static final int MIN_FLING_SPEED=5;
+
+		@Override
+		public boolean onFling(MotionEvent e1,MotionEvent e2,float velocityX,float velocityY)
+		{
+			if(touchImageView.getCurrentZoom()==1)
+			{
+				final float flingLength=Math.abs(e2.getY()-e1.getY());
+				final float flingTime=e2.getEventTime()-e1.getEventTime();
+				final float flingSpeed=flingLength/flingTime;
+				if(flingLength >= MIN_FLING_LENGTH&&flingSpeed >= MIN_FLING_SPEED)
+				{
+					hideAndCloseImage();
+				}
+			}
+			return true;
+		}
+
+		@Override
+		public boolean onSingleTapConfirmed(MotionEvent e)
+		{
+			if(isFullScreen)
+			{
+				showSystemUI();
+				isFullScreen=false;
+			}
+			else
+			{
+				hideSystemUI();
+				isFullScreen=true;
+			}
+			return true;
+		}
+	}
+
+	// TODO доделать логику смахиваний, ontouch slop
+	class ImageOnTouchListener implements View.OnTouchListener
 	{
 		@Override
 		public boolean onTouch(View view,MotionEvent motionEvent)
 		{
+			@NonNull
+			final String TAG="Touch";
+			if(touchImageView.getCurrentZoom()==1)
+			{
+				final float currentLocationY=touchImageView.getY();
+				switch(motionEvent.getAction())
+				{
+					case MotionEvent.ACTION_DOWN:
+						downTime=System.currentTimeMillis();
+						downLength=motionEvent.getY();
+						dY=touchImageView.getY()-motionEvent.getRawY();
+						break;
+					case MotionEvent.ACTION_UP:
+						if(currentLocationY >= MAX_LOCATION_Y||MIN_LOCATION_Y >= currentLocationY)
+						{
+							hideAndCloseImage();
+						}
+						else
+						{
+							touchImageView.animate().y(0).setDuration(200).start();
+						}
+						break;
+					case MotionEvent.ACTION_MOVE:
+						final long actionTime=System.currentTimeMillis()-downTime;
+						final float currentDownLength=Math.abs(downLength-motionEvent.getY());
+						if(currentDownLength >= 5)
+						{
+							touchImageView.animate().y(0).setDuration(0).start();
+							touchImageView.animate().y(motionEvent.getRawY()+dY).setDuration(0).start();
+							if(currentLocationY >= MAX_LOCATION_Y||MIN_LOCATION_Y >= currentLocationY)
+							{
+								touchImageView.animate().alpha(0.5f).setDuration(0).start();
+							}
+							else
+							{
+								touchImageView.animate().alpha(1).setDuration(0).start();
+							}
+						}
+						break;
+					default:
+						break;
+				}
+			}
 			return gestureDetector.onTouchEvent(motionEvent);
 		}
 	}
