@@ -6,6 +6,7 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
@@ -13,13 +14,14 @@ import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
-import android.util.DisplayMetrics;
-import android.util.Log;
+import android.os.Parcelable;
 import android.view.*;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import com.ortiz.touchview.TouchImageView;
 import java.io.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 import androidx.annotation.NonNull;
@@ -33,25 +35,27 @@ import androidx.core.app.NotificationManagerCompat;
 
 public class FullImage extends AppCompatActivity
 {
-	static final int MIN_LOCATION_Y=-350;
-	static final int MAX_LOCATION_Y=450;
 	static boolean isFullScreen;
 	static int num;
 	static GestureDetector gestureDetector;
 	static TouchImageView touchImageView;
 	static String url;
 	static NotificationManagerCompat notificationManagerCompat;
-	static float dY;
-	static long downTime;
+	static float offsetDY;
 	static float downLength;
+	static int touchSlop;
+	static boolean isTouch;
+	static int imageShiftThreshold;
 	private static final int CUTOUTAPI=28;
 	private static final int NOTIFICATIONCHANNELAPI=26;
 	private static final int IMPROVEDFULLSCREENAPI=19;
+	private static final int STATUSBARCOLORAPI=21;
 	@NonNull
 	private static final String LOADED_IMAGE_TAG="loaded";
 	private static final int NOTIFY_ID=101;
 	@NonNull
 	private static final String SHARE_INTENT_TYPE="text/plain";
+	private static final int INTENTCHOOSERAPI=23;
 
 	void createNotificationChannel()
 	{
@@ -71,16 +75,9 @@ public class FullImage extends AppCompatActivity
 		}
 	}
 
-	NotificationCompat.Action getActionBack()
-	{
-		@NonNull
-		final NotificationCompat.Action actionBack=new NotificationCompat.Action(R.drawable.ic_notification_back,"Открыть",getActionBackPendingIntent());
-		return actionBack;
-	}
-
 	PendingIntent getActionBackPendingIntent()
 	{
-		final int requestCode=(int)System.currentTimeMillis();
+		final int requestCode=100;
 		@NonNull
 		final Intent actionBackIntent=new Intent(FullImage.this,FullImage.class);
 		actionBackIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_SINGLE_TOP);
@@ -130,14 +127,46 @@ public class FullImage extends AppCompatActivity
 		return bitmap;
 	}
 
-	static Intent getShareImageIntent()
+	Intent getShareImageIntent()
 	{
 		@NonNull
-		final Intent actionShareIntent=new Intent(Intent.ACTION_SEND);
-		actionShareIntent.putExtra(Intent.EXTRA_TEXT,url);
-		actionShareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-		actionShareIntent.setType(SHARE_INTENT_TYPE);
-		return actionShareIntent;
+		final Intent resultIntent;
+		if(Build.VERSION.SDK_INT >= INTENTCHOOSERAPI)
+		{
+			@NonNull
+			final Intent shareIntent=new Intent(Intent.ACTION_SEND);
+			shareIntent.putExtra(Intent.EXTRA_TEXT,url);
+			shareIntent.setType(SHARE_INTENT_TYPE);
+			@NonNull
+			final List<ResolveInfo> resInfos=getPackageManager().queryIntentActivities(shareIntent,0);
+			@NonNull
+			final ArrayList<Intent> shareIntentsList=new ArrayList<>();
+			@NonNull
+			final String appPackageName=getPackageName();
+			for(final ResolveInfo resInfo : resInfos)
+			{
+				@NonNull
+				final String packageName=resInfo.activityInfo.packageName;
+				if(!packageName.equals(appPackageName))
+				{
+					@NonNull
+					final Intent intent=new Intent(Intent.ACTION_SEND);
+					intent.putExtra(Intent.EXTRA_TEXT,url);
+					intent.setType(SHARE_INTENT_TYPE);
+					intent.setPackage(packageName);
+					shareIntentsList.add(intent);
+				}
+			}
+			resultIntent=Intent.createChooser(shareIntentsList.remove(0),"Выберите приложение");
+			resultIntent.putExtra(Intent.EXTRA_ALTERNATE_INTENTS,shareIntentsList.toArray(new Parcelable[shareIntentsList.size()]));
+		}
+		else
+		{
+			resultIntent=new Intent(Intent.ACTION_SEND);
+			resultIntent.putExtra(Intent.EXTRA_TEXT,url);
+			resultIntent.setType(SHARE_INTENT_TYPE);
+		}
+		return resultIntent;
 	}
 
 	void hideAndCloseImage()
@@ -186,10 +215,10 @@ public class FullImage extends AppCompatActivity
 		@NonNull
 		final View decorView=getWindow().getDecorView();
 		decorView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE|View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
-		if(Build.VERSION.SDK_INT >= IMPROVEDFULLSCREENAPI)
+		if(Build.VERSION.SDK_INT >= STATUSBARCOLORAPI)
 		{
-			getWindow()
-				.setFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS|WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION,WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS|WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION);
+			getWindow().setFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS,WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+			getWindow().setStatusBarColor(MainActivity.resources.getColor(R.color.transparentElements));
 		}
 	}
 
@@ -204,8 +233,16 @@ public class FullImage extends AppCompatActivity
 
 	void initStatic()
 	{
+		if(MainActivity.resources==null)
+		{
+			MainActivity.resources=getResources();
+		}
 		touchImageView=findViewById(R.id.touch_image_view);
 		gestureDetector=new GestureDetector(this,new ImageGestureDetector());
+		@NonNull
+		final ViewConfiguration viewConfiguration=ViewConfiguration.get(touchImageView.getContext());
+		touchSlop=viewConfiguration.getScaledTouchSlop();
+		imageShiftThreshold=MainActivity.resources.getDimensionPixelSize(R.dimen.imageShiftThreshold);
 	}
 
 	void loadImage(@Nullable final File path)
@@ -330,7 +367,7 @@ public class FullImage extends AppCompatActivity
 				builder.setContentIntent(getActionBackPendingIntent());
 				builder.setAutoCancel(false);
 				builder.setShowWhen(false);
-				builder.addAction(getActionBack());
+				// builder.addAction(getActionBack());
 				builder.addAction(getActionOpen());
 				builder.addAction(getActionShare());
 				@NonNull
@@ -396,7 +433,7 @@ public class FullImage extends AppCompatActivity
 		@NonNull
 		private final String path;
 
-		BitmapWorkerTask(@NonNull TouchImageView touchImageView,@NonNull String path)
+		BitmapWorkerTask(@NonNull final TouchImageView touchImageView,@NonNull final String path)
 		{
 			this.touchImageView=touchImageView;
 			this.path=path;
@@ -406,7 +443,7 @@ public class FullImage extends AppCompatActivity
 		protected Bitmap doInBackground(Integer... params)
 		{
 			@Nullable
-			Bitmap bitmap=null;
+			final Bitmap bitmap;
 			try
 			{
 				@NonNull
@@ -432,13 +469,14 @@ public class FullImage extends AppCompatActivity
 				final BitmapFactory.Options bitmapOptions=new BitmapFactory.Options();
 				bitmapOptions.inSampleSize=reductionRatio;
 				bitmap=BitmapFactory.decodeFile(path,bitmapOptions);
+				return bitmap;
 			}
 			catch(Exception e)
 			{
 				e.printStackTrace();
 				showErrorAlertDialog("Decoding in background error");
 			}
-			return bitmap;
+			return null;
 		}
 
 		@Override
@@ -473,7 +511,7 @@ public class FullImage extends AppCompatActivity
 		{
 			@NonNull
 			final ShowLoading showLoading=new ShowLoading();
-			timer.schedule(showLoading,500);
+			timer.schedule(showLoading,MainActivity.ACTION_DELAY_TIME);
 		}
 
 		class ShowLoading extends TimerTask
@@ -530,18 +568,16 @@ public class FullImage extends AppCompatActivity
 
 	class ImageGestureDetector extends GestureDetector.SimpleOnGestureListener
 	{
-		@NonNull
-		static final String TAG="ImageGestureDetector";
 		static final int MIN_FLING_LENGTH=600;
 		static final int MIN_FLING_SPEED=5;
 
 		@Override
-		public boolean onFling(MotionEvent e1,MotionEvent e2,float velocityX,float velocityY)
+		public boolean onFling(MotionEvent motionEvent1,MotionEvent motionEvent2,float velocityX,float velocityY)
 		{
 			if(touchImageView.getCurrentZoom()==1)
 			{
-				final float flingLength=Math.abs(e2.getY()-e1.getY());
-				final float flingTime=e2.getEventTime()-e1.getEventTime();
+				final float flingLength=Math.abs(motionEvent2.getY()-motionEvent1.getY());
+				final float flingTime=motionEvent2.getEventTime()-motionEvent1.getEventTime();
 				final float flingSpeed=flingLength/flingTime;
 				if(flingLength >= MIN_FLING_LENGTH&&flingSpeed >= MIN_FLING_SPEED)
 				{
@@ -552,7 +588,7 @@ public class FullImage extends AppCompatActivity
 		}
 
 		@Override
-		public boolean onSingleTapConfirmed(MotionEvent e)
+		public boolean onSingleTapConfirmed(MotionEvent motionEvent)
 		{
 			if(isFullScreen)
 			{
@@ -568,26 +604,23 @@ public class FullImage extends AppCompatActivity
 		}
 	}
 
-	// TODO доделать логику смахиваний, ontouch slop
 	class ImageOnTouchListener implements View.OnTouchListener
 	{
 		@Override
 		public boolean onTouch(View view,MotionEvent motionEvent)
 		{
-			@NonNull
-			final String TAG="Touch";
 			if(touchImageView.getCurrentZoom()==1)
 			{
-				final float currentLocationY=touchImageView.getY();
+				final float currentLocationY=Math.abs(touchImageView.getY());
 				switch(motionEvent.getAction())
 				{
 					case MotionEvent.ACTION_DOWN:
-						downTime=System.currentTimeMillis();
 						downLength=motionEvent.getY();
-						dY=touchImageView.getY()-motionEvent.getRawY();
+						offsetDY=touchImageView.getY()-motionEvent.getRawY();
 						break;
 					case MotionEvent.ACTION_UP:
-						if(currentLocationY >= MAX_LOCATION_Y||MIN_LOCATION_Y >= currentLocationY)
+						isTouch=false;
+						if(currentLocationY >= imageShiftThreshold)
 						{
 							hideAndCloseImage();
 						}
@@ -597,23 +630,26 @@ public class FullImage extends AppCompatActivity
 						}
 						break;
 					case MotionEvent.ACTION_MOVE:
-						final long actionTime=System.currentTimeMillis()-downTime;
 						final float currentDownLength=Math.abs(downLength-motionEvent.getY());
-						if(currentDownLength >= 5)
+						final int pointerCount=motionEvent.getPointerCount();
+						if(currentDownLength >= touchSlop&&!isTouch)
+						{
+							isTouch=true;
+						}
+						if(isTouch&&pointerCount==1)
 						{
 							touchImageView.animate().y(0).setDuration(0).start();
-							touchImageView.animate().y(motionEvent.getRawY()+dY).setDuration(0).start();
-							if(currentLocationY >= MAX_LOCATION_Y||MIN_LOCATION_Y >= currentLocationY)
+							touchImageView.animate().y(motionEvent.getRawY()+offsetDY).setDuration(0).start();
+							if(currentLocationY >= imageShiftThreshold)
 							{
-								touchImageView.animate().alpha(0.5f).setDuration(0).start();
+								final float transparencyCoefficient=(float)(1-Math.sqrt(Math.abs(currentLocationY/1000)));
+								touchImageView.animate().alpha(transparencyCoefficient).setDuration(0).start();
 							}
 							else
 							{
 								touchImageView.animate().alpha(1).setDuration(0).start();
 							}
 						}
-						break;
-					default:
 						break;
 				}
 			}

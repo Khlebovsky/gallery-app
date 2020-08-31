@@ -6,6 +6,8 @@
 		<item name="colorAccent">@color/colorAccent</item>
 		<item name="android:fastScrollThumbDrawable">@drawable/scrollbar</item>
 		<item name="actionBarStyle">@style/DefaultActionBar</item>
+		<item name="android:splitMotionEvents">false</item>
+		<item name="android:windowBackground">@null</item>
 	</style>
 
 	<style name="PreloaderTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
@@ -27,8 +29,8 @@
 	</style>
 
 	<style name="FullImageActionBar" parent="Widget.AppCompat.ActionBar">
-		<item name="background">@color/transparentBlack</item>
-		<item name="android:background">@color/transparentBlack</item>
+		<item name="background">@color/transparentElements</item>
+		<item name="android:background">@color/transparentElements</item>
 		<item name="titleTextStyle">@style/ToolbarTitle</item>
 	</style>
 

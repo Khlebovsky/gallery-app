@@ -1,6 +1,7 @@
 package com.example.gallery;
 
 import android.app.Dialog;
+import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -10,7 +11,6 @@ import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Point;
-import android.media.Image;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkInfo;
@@ -53,6 +53,7 @@ public class MainActivity extends AppCompatActivity
 	public static final HashMap<String,String> LINKS_STATUS=new HashMap<>();
 	@NonNull
 	public static final HashMap<String,String> ERROR_LIST=new HashMap<>();
+	public static final int ACTION_DELAY_TIME=500;
 	@Nullable
 	public static File cache;
 	@Nullable
@@ -116,7 +117,7 @@ public class MainActivity extends AppCompatActivity
 		recreate();
 	}
 
-	void checkDisk()
+	static void checkDisk()
 	{
 		new Thread()
 		{
@@ -131,7 +132,6 @@ public class MainActivity extends AppCompatActivity
 					{
 						diskFiles.add(ImageDownloader.urlToHashMD5(string));
 					}
-					boolean isUpdates=false;
 					if(bytes!=null&&bytes.exists())
 					{
 						@NonNull
@@ -146,23 +146,10 @@ public class MainActivity extends AppCompatActivity
 								final String fileName=file.toString().substring(parentDir.length());
 								if(!diskFiles.contains(fileName))
 								{
-									isUpdates=true;
 									ImageDownloader.deleteImageFromDisk(fileName);
 								}
 							}
 						}
-					}
-					if(isUpdates)
-					{
-						//noinspection AnonymousInnerClassMayBeStatic
-						runOnUiThread(new Runnable()
-						{
-							@Override
-							public void run()
-							{
-								StyleableToast.makeText(context,"Файлы на диске оптимизмрованы",Toast.LENGTH_SHORT,R.style.ToastStyle).show();
-							}
-						});
 					}
 				}
 				catch(Exception e)
@@ -178,14 +165,7 @@ public class MainActivity extends AppCompatActivity
 		if(isConnected)
 		{
 			@NonNull
-			final AlertDialog.Builder builder=new AlertDialog.Builder(MainActivity.this,R.style.AlertDialogTheme);
-			builder.setView(R.layout.progress_bar);
-			builder.setCancelable(false);
-			@NonNull
-			final AlertDialog progressDialog=builder.create();
-			progressDialog.show();
-			@NonNull
-			final CheckUpdatesThread checkUpdatesThread=new CheckUpdatesThread(progressDialog);
+			final CheckUpdatesThread checkUpdatesThread=new CheckUpdatesThread();
 			checkUpdatesThread.start();
 		}
 		else
@@ -493,8 +473,6 @@ public class MainActivity extends AppCompatActivity
 				@Override
 				public void onItemClick(final AdapterView<?> parent,View v,int position,long id)
 				{
-					parent.setClickable(false);
-					parent.setEnabled(false);
 					if(LINKS_STATUS.containsKey(ImageAdapter.URLS.get(position)))
 					{
 						@NonNull
@@ -543,16 +521,6 @@ public class MainActivity extends AppCompatActivity
 							e.printStackTrace();
 						}
 					}
-					//noinspection AnonymousInnerClassMayBeStatic
-					new Handler().postDelayed(new Runnable()
-					{
-						@Override
-						public void run()
-						{
-							parent.setEnabled(true);
-							parent.setClickable(true);
-						}
-					},200);
 				}
 			});
 		}
@@ -616,7 +584,7 @@ public class MainActivity extends AppCompatActivity
 						{
 							changeTheme();
 						}
-					},500);
+					},ACTION_DELAY_TIME);
 					return true;
 			}
 		}
@@ -765,6 +733,7 @@ public class MainActivity extends AppCompatActivity
 
 	public void updateAdapter()
 	{
+		//noinspection AnonymousInnerClassMayBeStatic
 		runOnUiThread(new Runnable()
 		{
 			@Override
@@ -822,12 +791,8 @@ public class MainActivity extends AppCompatActivity
 
 	private class CheckUpdatesThread extends Thread
 	{
-		@NonNull
-		final AlertDialog progressDialog;
-
-		CheckUpdatesThread(@NonNull final AlertDialog progressDialog)
+		CheckUpdatesThread()
 		{
-			this.progressDialog=progressDialog;
 		}
 
 		@Override
@@ -856,7 +821,6 @@ public class MainActivity extends AppCompatActivity
 					{
 						serverURLS.add(line);
 					}
-					boolean isUpdated=false;
 					if(!serverURLS.equals(ImageAdapter.URLS))
 					{
 						@NonNull
@@ -898,18 +862,7 @@ public class MainActivity extends AppCompatActivity
 						{
 							e.printStackTrace();
 						}
-						isUpdated=true;
 					}
-					@NonNull
-					final String updateResult=isUpdated?"Данные обновлены":"Обновлений не обнаружено";
-					runOnUiThread(new Runnable()
-					{
-						@Override
-						public void run()
-						{
-							StyleableToast.makeText(context,updateResult,Toast.LENGTH_SHORT,R.style.ToastStyle).show();
-						}
-					});
 				}
 				catch(Exception e)
 				{
@@ -933,7 +886,6 @@ public class MainActivity extends AppCompatActivity
 					}
 				});
 			}
-			progressDialog.dismiss();
 		}
 	}
 

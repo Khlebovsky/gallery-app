@@ -560,6 +560,92 @@ public final class ImageDownloader
 		return null;
 	}
 
+	static void getImageFromSharing(@NonNull final String url,@NonNull final ImageView imageView,@NonNull final Context context)
+	{
+		new Thread()
+		{
+			@Override
+			public void run()
+			{
+				try
+				{
+					@Nullable
+					final String fileName=FILE_NAMES.get(url);
+					if(fileName!=null)
+					{
+						@NonNull
+						final File path=new File(MainActivity.bytes,fileName);
+						@NonNull
+						final BitmapFactory.Options options=new BitmapFactory.Options();
+						options.inJustDecodeBounds=true;
+						BitmapFactory.decodeFile(String.valueOf(path),options);
+						@NonNull
+						int originalBitmapWidth=options.outWidth;
+						@NonNull
+						int originalBitmapHeight=options.outHeight;
+						if(originalBitmapWidth==-1)
+						{
+							SharedImage.showSharedImageAlertDialog("The file is not a picture");
+						}
+						else
+						{
+							int reductionRatio=0;
+							if(originalBitmapWidth>MAX_BITMAP_SIZE||originalBitmapHeight>MAX_BITMAP_SIZE)
+							{
+								reductionRatio=1;
+								while(originalBitmapWidth>MAX_BITMAP_SIZE||originalBitmapHeight>MAX_BITMAP_SIZE)
+								{
+									reductionRatio<<=1;
+									originalBitmapWidth/=2;
+									originalBitmapHeight/=2;
+								}
+							}
+							@NonNull
+							final BitmapFactory.Options bitmapOptions=new BitmapFactory.Options();
+							bitmapOptions.inSampleSize=reductionRatio;
+							@Nullable
+							final Bitmap originalBitmap=BitmapFactory.decodeFile(String.valueOf(path),bitmapOptions);
+							if(originalBitmap!=null)
+							{
+								//noinspection AnonymousInnerClassMayBeStatic
+								((SharedImage)context).runOnUiThread(new Runnable()
+								{
+									@Override
+									public void run()
+									{
+										try
+										{
+											imageView.setImageBitmap(originalBitmap);
+											imageView.setScaleType(ImageView.ScaleType.FIT_CENTER);
+											imageView.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
+										}
+										catch(Exception e)
+										{
+											SharedImage.showSharedImageAlertDialog("Decoding error");
+										}
+									}
+								});
+							}
+							else
+							{
+								SharedImage.showSharedImageAlertDialog("Decoding error");
+							}
+						}
+					}
+					else
+					{
+						SharedImage.showSharedImageAlertDialog("The picture does not exist");
+					}
+				}
+				catch(Exception e)
+				{
+					e.printStackTrace();
+					SharedImage.showSharedImageAlertDialog("Unknown error");
+				}
+			}
+		}.start();
+	}
+
 	public static void initStatic()
 	{
 		imageWidth=MainActivity.resources.getDimensionPixelSize(R.dimen.imageWidth);

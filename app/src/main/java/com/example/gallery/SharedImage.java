@@ -35,15 +35,18 @@ public class SharedImage extends AppCompatActivity
 		{
 			url=imageUrl;
 			setTitle(url);
-			// TODO упростить логику
 			if(ImageAdapter.URLS.contains(url))
 			{
 				applyButton.setClickable(false);
 				applyButton.setEnabled(false);
 				applyButton.setBackgroundColor(MainActivity.resources.getColor(R.color.colorPrimaryDark));
 				showWarningAlertDialog();
+				ImageDownloader.getImageFromSharing(url,imageView,context);
 			}
-			ImageDownloader.downloadImageFromSharing(url,imageView,context);
+			else
+			{
+				ImageDownloader.downloadImageFromSharing(url,imageView,context);
+			}
 		}
 		else
 		{
@@ -189,8 +192,7 @@ public class SharedImage extends AppCompatActivity
 				@NonNull
 				final AlertDialog.Builder builder=new AlertDialog.Builder(sharedImage,R.style.AlertDialogTheme);
 				builder.setCancelable(true);
-				builder.setTitle("Предупреждение");
-				builder.setMessage("Предупреждение: \nКартинка уже есть в списке");
+				builder.setMessage("Картинка уже есть в списке");
 				builder.setPositiveButton("Ок",new WarningAlertDialogOnClickListener());
 				builder.show();
 			}

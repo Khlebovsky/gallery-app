@@ -5,6 +5,6 @@
     <color name="backgroundColor">#1A1A1A</color>
     <color name="listSelector">#40ffffff</color>
     <color name="scrollbarColor">#5dffffff</color>
-    <color name="navBarColor">#1A1A1A</color>
     <color name="elementsColor">#FFFFFF</color>
+    <color name="transparentElements">#CC680402</color>
 </resources>
