@@ -9,6 +9,7 @@
 		<item name="actionBarStyle">@style/DefaultActionBar</item>
 		<item name="android:splitMotionEvents">false</item>
 		<item name="android:windowBackground">@null</item>
+		<item name="android:statusBarColor">@color/statusBarColor</item>
 	</style>
 
 	<style name="PreloaderTheme" parent="Theme.AppCompat.DayNight.NoActionBar">

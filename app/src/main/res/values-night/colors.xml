@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorPrimary">#5F0402</color>
+    <color name="colorPrimary">#680402</color>
     <color name="colorPrimaryDark">#000000</color>
     <color name="backgroundColor">#1A1A1A</color>
     <color name="listSelector">#40ffffff</color>
     <color name="scrollbarColor">#5dffffff</color>
     <color name="elementsColor">#FFFFFF</color>
     <color name="transparentElements">#CC680402</color>
+    <color name="statusBarColor">#520302</color>
+    <color name="transparentStatusBarColor">#CC520302</color>
 </resources>

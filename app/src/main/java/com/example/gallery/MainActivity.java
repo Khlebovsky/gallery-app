@@ -160,12 +160,12 @@ public class MainActivity extends AppCompatActivity
 		}.start();
 	}
 
-	void checkUpdates()
+	void checkUpdates(final boolean showToast)
 	{
 		if(isConnected)
 		{
 			@NonNull
-			final CheckUpdatesThread checkUpdatesThread=new CheckUpdatesThread();
+			final CheckUpdatesThread checkUpdatesThread=new CheckUpdatesThread(showToast);
 			checkUpdatesThread.start();
 		}
 		else
@@ -457,7 +457,7 @@ public class MainActivity extends AppCompatActivity
 			else
 			{
 				updateAdapter();
-				checkUpdates();
+				checkUpdates(false);
 				isCheckedUpdates=true;
 			}
 		}
@@ -571,7 +571,7 @@ public class MainActivity extends AppCompatActivity
 			switch(item.getItemId())
 			{
 				case R.id.update:
-					checkUpdates();
+					checkUpdates(true);
 					return true;
 				case R.id.reloadErrorLinks:
 					relaodErrorLinks();
@@ -593,7 +593,7 @@ public class MainActivity extends AppCompatActivity
 			switch(item.getItemId())
 			{
 				case R.id.update:
-					checkUpdates();
+					checkUpdates(true);
 					return true;
 				case R.id.reloadErrorLinks:
 					relaodErrorLinks();
@@ -791,8 +791,11 @@ public class MainActivity extends AppCompatActivity
 
 	private class CheckUpdatesThread extends Thread
 	{
-		CheckUpdatesThread()
+		final boolean showToast;
+
+		CheckUpdatesThread(final boolean showToast)
 		{
+			this.showToast=showToast;
 		}
 
 		@Override
@@ -807,6 +810,7 @@ public class MainActivity extends AppCompatActivity
 				final ArrayList<String> serverURLS=new ArrayList<>();
 				try
 				{
+					boolean isUpdated=false;
 					@NonNull
 					final OkHttpClient client=new OkHttpClient.Builder().sslSocketFactory(ConnectionSettings.getTLSSocketFactory(),ConnectionSettings.getTrustManager()[0]).build();
 					@NonNull
@@ -820,6 +824,10 @@ public class MainActivity extends AppCompatActivity
 					while((line=bufferedReader.readLine())!=null)
 					{
 						serverURLS.add(line);
+					}
+					if(!serverURLS.equals(ImageAdapter.URLS))
+					{
+						isUpdated=true;
 					}
 					if(!serverURLS.equals(ImageAdapter.URLS))
 					{
@@ -863,6 +871,19 @@ public class MainActivity extends AppCompatActivity
 							e.printStackTrace();
 						}
 					}
+					if(showToast)
+					{
+						@NonNull
+						final String updateResult=isUpdated?"Данные обновлены":"Обновлений не обнаружено";
+						runOnUiThread(new Runnable()
+						{
+							@Override
+							public void run()
+							{
+								StyleableToast.makeText(context,updateResult,Toast.LENGTH_SHORT,R.style.ToastStyle).show();
+							}
+						});
+					}
 				}
 				catch(Exception e)
 				{
@@ -875,7 +896,7 @@ public class MainActivity extends AppCompatActivity
 				isError=true;
 				e.printStackTrace();
 			}
-			if(isError)
+			if(isError&&showToast)
 			{
 				runOnUiThread(new Runnable()
 				{
