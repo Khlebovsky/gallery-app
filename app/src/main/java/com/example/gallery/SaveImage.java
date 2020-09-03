@@ -4,28 +4,28 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
-import android.view.Menu;
-import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import java.io.BufferedReader;
+import java.io.FileReader;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
-public class SharedImage extends AppCompatActivity
+public class SaveImage extends AppCompatActivity
 {
 	public static ImageView imageView;
 	static Context context;
 	static String url;
-	static SharedImage sharedImage;
+	static SaveImage saveImage;
+	static ImageButton applyButton;
 	@NonNull
 	private static final String MIMETYPE_TEXT="text/plain";
-	private static ImageButton applyButton;
 
 	void handleSendText(@NonNull Intent intent)
 	{
@@ -35,22 +35,15 @@ public class SharedImage extends AppCompatActivity
 		{
 			url=imageUrl;
 			setTitle(url);
-			if(ImageAdapter.URLS.contains(url))
-			{
-				applyButton.setClickable(false);
-				applyButton.setEnabled(false);
-				applyButton.setBackgroundColor(MainActivity.resources.getColor(R.color.colorPrimaryDark));
-				showWarningAlertDialog();
-				ImageDownloader.getImageFromSharing(url,imageView,context);
-			}
-			else
-			{
-				ImageDownloader.downloadImageFromSharing(url,imageView,context);
-			}
+			final int size=MainActivity.resources.getDimensionPixelSize(R.dimen.preloaderSize);
+			imageView.setLayoutParams(new LinearLayout.LayoutParams(size,size));
+			imageView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+			imageView.setImageResource(R.drawable.progress);
+			new ShowSavedImageThread().start();
 		}
 		else
 		{
-			showSharedImageAlertDialog("Invalid link");
+			showSaveImageAlertDialog("Invalid link");
 			imageView.setImageResource(R.drawable.ic_error);
 		}
 	}
@@ -65,8 +58,8 @@ public class SharedImage extends AppCompatActivity
 		{
 			MainActivity.resources=getResources();
 		}
-		sharedImage=SharedImage.this;
-		context=SharedImage.this;
+		saveImage=SaveImage.this;
+		context=SaveImage.this;
 		imageView=findViewById(R.id.share_image_view);
 		@NonNull
 		final ImageButton cancelButton=findViewById(R.id.cancel_button);
@@ -90,7 +83,7 @@ public class SharedImage extends AppCompatActivity
 			{
 				ClientServer.addImage(url);
 				@NonNull
-				final Intent intent=new Intent(SharedImage.this,MainActivity.class);
+				final Intent intent=new Intent(SaveImage.this,MainActivity.class);
 				intent.setPackage(getPackageName());
 				try
 				{
@@ -112,7 +105,7 @@ public class SharedImage extends AppCompatActivity
 		MainActivity.sharedPreferences=getSharedPreferences("Gallery",MODE_PRIVATE);
 		MainActivity.initTheme();
 		super.onCreate(savedInstanceState);
-		setContentView(R.layout.activity_shared_image);
+		setContentView(R.layout.activity_save_image);
 		setHomeButton();
 		initStatic();
 		@NonNull
@@ -127,7 +120,7 @@ public class SharedImage extends AppCompatActivity
 		}
 		else
 		{
-			showSharedImageAlertDialog("The image is not transferred or this link format is not supported");
+			showSaveImageAlertDialog("The image is not transferred or this link format is not supported");
 		}
 	}
 
@@ -136,7 +129,8 @@ public class SharedImage extends AppCompatActivity
 	{
 		if(item.getItemId()==android.R.id.home)
 		{
-			final Intent intent=new Intent(SharedImage.this,MainActivity.class);
+			final Intent intent=new Intent(SaveImage.this,MainActivity.class);
+			intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 			intent.setPackage(getPackageName());
 			try
 			{
@@ -164,19 +158,19 @@ public class SharedImage extends AppCompatActivity
 		}
 	}
 
-	public static void showSharedImageAlertDialog(@NonNull final String error)
+	public static void showSaveImageAlertDialog(@NonNull final String error)
 	{
-		sharedImage.runOnUiThread(new Runnable()
+		saveImage.runOnUiThread(new Runnable()
 		{
 			@Override
 			public void run()
 			{
 				@NonNull
-				final AlertDialog.Builder builder=new AlertDialog.Builder(sharedImage,R.style.AlertDialogTheme);
+				final AlertDialog.Builder builder=new AlertDialog.Builder(saveImage,R.style.AlertDialogTheme);
 				builder.setCancelable(false);
 				builder.setTitle("Ошибка");
 				builder.setMessage("Ошибка: \n"+error);
-				builder.setPositiveButton("Ок",new AlertDialogOnClickListener());
+				builder.setPositiveButton("ОК",new AlertDialogOnClickListener());
 				builder.show();
 			}
 		});
@@ -184,16 +178,16 @@ public class SharedImage extends AppCompatActivity
 
 	static void showWarningAlertDialog()
 	{
-		sharedImage.runOnUiThread(new Runnable()
+		saveImage.runOnUiThread(new Runnable()
 		{
 			@Override
 			public void run()
 			{
 				@NonNull
-				final AlertDialog.Builder builder=new AlertDialog.Builder(sharedImage,R.style.AlertDialogTheme);
+				final AlertDialog.Builder builder=new AlertDialog.Builder(saveImage,R.style.AlertDialogTheme);
 				builder.setCancelable(true);
 				builder.setMessage("Картинка уже есть в списке");
-				builder.setPositiveButton("Ок",new WarningAlertDialogOnClickListener());
+				builder.setPositiveButton("ОК",new WarningAlertDialogOnClickListener());
 				builder.show();
 			}
 		});
@@ -204,7 +198,46 @@ public class SharedImage extends AppCompatActivity
 		@Override
 		public void onClick(DialogInterface dialogInterface,int i)
 		{
-			sharedImage.finish();
+			saveImage.finish();
+		}
+	}
+
+	static class ShowSavedImageThread extends Thread
+	{
+		@Override
+		public void run()
+		{
+			boolean isImageInGallery=false;
+			try
+			{
+				@NonNull
+				final BufferedReader bufferedReader=new BufferedReader(new FileReader(MainActivity.linksFile));
+				String string;
+				while((string=bufferedReader.readLine())!=null)
+				{
+					if(url.equals(string))
+					{
+						isImageInGallery=true;
+					}
+				}
+				bufferedReader.close();
+			}
+			catch(Exception e)
+			{
+				e.printStackTrace();
+			}
+			if(isImageInGallery)
+			{
+				applyButton.setClickable(false);
+				applyButton.setEnabled(false);
+				applyButton.setBackgroundColor(MainActivity.resources.getColor(R.color.colorPrimaryDark));
+				showWarningAlertDialog();
+				ImageDownloader.getImageFromSharing(url,imageView,context);
+			}
+			else
+			{
+				ImageDownloader.downloadImageFromSharing(url,imageView,context);
+			}
 		}
 	}
 

@@ -99,7 +99,7 @@ public class MainActivity extends AppCompatActivity
 		final AlertDialog.Builder builder=new AlertDialog.Builder(MainActivity.this,R.style.AlertDialogTheme);
 		builder.setTitle("Нет интернета");
 		builder.setMessage("Нет подключения к интернету. Включите WI-FI или сотовую связь и попробуйте снова.");
-		builder.setPositiveButton("Ок",new AlertDialogOnClickListener());
+		builder.setPositiveButton("ОК",new AlertDialogOnClickListener());
 		builder.show();
 	}
 
@@ -439,6 +439,7 @@ public class MainActivity extends AppCompatActivity
 		initSharedPrefs();
 		initTheme();
 		super.onCreate(savedInstanceState);
+		setTheme(R.style.AppTheme);
 		setContentView(R.layout.activity_main);
 		initStatic();
 		initNetworkStatusListener();
@@ -496,7 +497,7 @@ public class MainActivity extends AppCompatActivity
 							builder.setNegativeButton("Удалить",new AlertDialogOnClickListener(position));
 							builder.setNeutralButton("Перезагрузить",new AlertDialogOnClickListener(position));
 						}
-						builder.setPositiveButton("Ок",new AlertDialogOnClickListener());
+						builder.setPositiveButton("ОК",new AlertDialogOnClickListener());
 						builder.show();
 					}
 					else
@@ -516,7 +517,7 @@ public class MainActivity extends AppCompatActivity
 							final AlertDialog.Builder builder=new AlertDialog.Builder(MainActivity.this,R.style.AlertDialogTheme);
 							builder.setTitle("Ошибка");
 							builder.setMessage("Ошибка: \nПроизошла непредвиденная ошибка");
-							builder.setPositiveButton("Ок",new AlertDialogOnClickListener());
+							builder.setPositiveButton("ОК",new AlertDialogOnClickListener());
 							builder.show();
 							e.printStackTrace();
 						}

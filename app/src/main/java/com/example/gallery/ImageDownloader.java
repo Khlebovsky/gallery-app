@@ -111,21 +111,36 @@ public final class ImageDownloader
 		{
 			try
 			{
+				int num=0;
 				@NonNull
-				final File fullImage=new File(MainActivity.bytes,fileName);
-				if(fullImage.exists())
+				final BufferedReader bufferedReader=new BufferedReader(new FileReader(MainActivity.linksFile));
+				String string;
+				while((string=bufferedReader.readLine())!=null)
 				{
-					//noinspection ResultOfMethodCallIgnored
-					fullImage.delete();
+					if(fileName.equals(urlToHashMD5(string)))
+					{
+						num++;
+					}
 				}
-				@NonNull
-				final File preview=new File(MainActivity.previews,fileName);
-				if(preview.exists())
+				bufferedReader.close();
+				if(num>1)
 				{
-					//noinspection ResultOfMethodCallIgnored
-					preview.delete();
+					@NonNull
+					final File fullImage=new File(MainActivity.bytes,fileName);
+					if(fullImage.exists())
+					{
+						//noinspection ResultOfMethodCallIgnored
+						fullImage.delete();
+					}
+					@NonNull
+					final File preview=new File(MainActivity.previews,fileName);
+					if(preview.exists())
+					{
+						//noinspection ResultOfMethodCallIgnored
+						preview.delete();
+					}
+					ImageDownloader.FILE_NAMES.remove(fileName);
 				}
-				ImageDownloader.FILE_NAMES.remove(fileName);
 			}
 			catch(Exception e)
 			{
@@ -182,7 +197,7 @@ public final class ImageDownloader
 							int originalBitmapHeight=options.outHeight;
 							if(originalBitmapWidth==-1)
 							{
-								SharedImage.showSharedImageAlertDialog("The file is not a picture");
+								SaveImage.showSaveImageAlertDialog("The file is not a picture");
 							}
 							else
 							{
@@ -205,7 +220,7 @@ public final class ImageDownloader
 								if(originalBitmap!=null)
 								{
 									//noinspection AnonymousInnerClassMayBeStatic
-									((SharedImage)context).runOnUiThread(new Runnable()
+									((SaveImage)context).runOnUiThread(new Runnable()
 									{
 										@Override
 										public void run()
@@ -218,20 +233,20 @@ public final class ImageDownloader
 											}
 											catch(Exception e)
 											{
-												SharedImage.showSharedImageAlertDialog("Decoding error");
+												SaveImage.showSaveImageAlertDialog("Decoding error");
 											}
 										}
 									});
 								}
 								else
 								{
-									SharedImage.showSharedImageAlertDialog("Decoding error");
+									SaveImage.showSaveImageAlertDialog("Decoding error");
 								}
 							}
 						}
 						catch(Exception e)
 						{
-							SharedImage.showSharedImageAlertDialog("Connection error");
+							SaveImage.showSaveImageAlertDialog("Connection error");
 							e.printStackTrace();
 						}
 						finally
@@ -244,13 +259,13 @@ public final class ImageDownloader
 					}
 					else
 					{
-						SharedImage.showSharedImageAlertDialog("Response code: "+response.code());
+						SaveImage.showSaveImageAlertDialog("Response code: "+response.code());
 					}
 				}
 				catch(Exception e)
 				{
 					e.printStackTrace();
-					SharedImage.showSharedImageAlertDialog("Unknown error");
+					SaveImage.showSaveImageAlertDialog("Unknown error");
 				}
 			}
 		}.start();
@@ -570,8 +585,12 @@ public final class ImageDownloader
 				try
 				{
 					@Nullable
-					final String fileName=FILE_NAMES.get(url);
-					if(fileName!=null)
+					final String fileName=urlToHashMD5(url);
+					if(url.isEmpty())
+					{
+						SaveImage.showSaveImageAlertDialog("The picture does not exist");
+					}
+					else
 					{
 						@NonNull
 						final File path=new File(MainActivity.bytes,fileName);
@@ -585,7 +604,7 @@ public final class ImageDownloader
 						int originalBitmapHeight=options.outHeight;
 						if(originalBitmapWidth==-1)
 						{
-							SharedImage.showSharedImageAlertDialog("The file is not a picture");
+							SaveImage.showSaveImageAlertDialog("The file is not a picture");
 						}
 						else
 						{
@@ -608,7 +627,7 @@ public final class ImageDownloader
 							if(originalBitmap!=null)
 							{
 								//noinspection AnonymousInnerClassMayBeStatic
-								((SharedImage)context).runOnUiThread(new Runnable()
+								((SaveImage)context).runOnUiThread(new Runnable()
 								{
 									@Override
 									public void run()
@@ -621,26 +640,22 @@ public final class ImageDownloader
 										}
 										catch(Exception e)
 										{
-											SharedImage.showSharedImageAlertDialog("Decoding error");
+											SaveImage.showSaveImageAlertDialog("Decoding error");
 										}
 									}
 								});
 							}
 							else
 							{
-								SharedImage.showSharedImageAlertDialog("Decoding error");
+								SaveImage.showSaveImageAlertDialog("Decoding error");
 							}
 						}
-					}
-					else
-					{
-						SharedImage.showSharedImageAlertDialog("The picture does not exist");
 					}
 				}
 				catch(Exception e)
 				{
 					e.printStackTrace();
-					SharedImage.showSharedImageAlertDialog("Unknown error");
+					SaveImage.showSaveImageAlertDialog("Unknown error");
 				}
 			}
 		}.start();

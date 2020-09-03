@@ -29,9 +29,17 @@
 			android:exported="false" />
 
 		<activity
-			android:name=".PreloaderActivity"
+			android:name=".LauncherActivity"
+			android:allowTaskReparenting="true"
+			android:alwaysRetainTaskState="false"
+			android:clearTaskOnLaunch="false"
 			android:configChanges="mcc|mnc|screenLayout|touchscreen|smallestScreenSize|keyboard|keyboardHidden|navigation|orientation|screenSize|fontScale|layoutDirection|colorMode|locale|uiMode"
-			android:theme="@style/PreloaderTheme">
+			android:excludeFromRecents="true"
+			android:launchMode="singleInstance"
+			android:noHistory="true"
+			android:stateNotNeeded="true"
+			android:taskAffinity=":launch"
+			android:theme="@android:style/Theme.NoDisplay">
 
 			<intent-filter>
 				<action android:name="android.intent.action.MAIN" />
@@ -42,7 +50,13 @@
 
 		<activity
 			android:name=".MainActivity"
-			android:configChanges="mcc|mnc|screenLayout|touchscreen|smallestScreenSize|keyboard|keyboardHidden|navigation|orientation|screenSize|fontScale|layoutDirection|colorMode|locale|uiMode" />
+			android:allowTaskReparenting="true"
+			android:alwaysRetainTaskState="true"
+			android:clearTaskOnLaunch="false"
+			android:configChanges="mcc|mnc|screenLayout|touchscreen|smallestScreenSize|keyboard|keyboardHidden|navigation|orientation|screenSize|fontScale|layoutDirection|colorMode|locale|uiMode"
+			android:launchMode="singleTop"
+			android:noHistory="false"
+			android:theme="@style/LauncherTheme" />
 
 		<activity
 			android:name=".FullImage"
@@ -50,9 +64,12 @@
 			android:theme="@style/FullImageScreen" />
 
 		<activity
-			android:name=".SharedImage"
+			android:name=".SaveImage"
 			android:configChanges="mcc|mnc|screenLayout|touchscreen|smallestScreenSize|keyboard|keyboardHidden|navigation|orientation|screenSize|fontScale|layoutDirection|colorMode|locale|uiMode"
-			android:theme="@style/ShareImageScreen">
+			android:excludeFromRecents="true"
+			android:launchMode="singleInstance"
+			android:taskAffinity=":saveImage"
+			android:theme="@style/SaveImageScreen">
 
 			<intent-filter>
 				<action android:name="android.intent.action.SEND" />
