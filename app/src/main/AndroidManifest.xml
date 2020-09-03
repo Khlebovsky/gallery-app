@@ -30,6 +30,7 @@
 
 		<activity
 			android:name=".PreloaderActivity"
+			android:configChanges="mcc|mnc|screenLayout|touchscreen|smallestScreenSize|keyboard|keyboardHidden|navigation|orientation|screenSize|fontScale|layoutDirection|colorMode|locale|uiMode"
 			android:theme="@style/PreloaderTheme">
 
 			<intent-filter>

@@ -39,7 +39,7 @@ public class ImageCustomView extends LinearLayout
 						break;
 					}
 					FullImage.isTouch=false;
-					if(!photoView.isZoomEnabled())
+					if(!photoView.isZoomable())
 					{
 						photoView.setZoomable(true);
 					}
@@ -53,7 +53,7 @@ public class ImageCustomView extends LinearLayout
 					}
 					if(FullImage.isTouch)
 					{
-						if(photoView.isZoomEnabled())
+						if(photoView.isZoomable())
 						{
 							photoView.setZoomable(false);
 						}

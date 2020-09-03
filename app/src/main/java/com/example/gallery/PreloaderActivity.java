@@ -7,6 +7,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 public class PreloaderActivity extends AppCompatActivity
 {
+	// TODO прописать флаги в манифесте
 	@Override
 	protected void onCreate(Bundle savedInstanceState)
 	{

@@ -19,7 +19,6 @@ import android.os.Parcelable;
 import android.view.*;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import com.github.chrisbanes.photoview.PhotoView;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -199,7 +198,7 @@ public class FullImage extends AppCompatActivity
 			@NonNull
 			final View decorView=getWindow().getDecorView();
 			decorView.setSystemUiVisibility(
-				View.SYSTEM_UI_FLAG_IMMERSIVE|View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_LAYOUT_STABLE|View.SYSTEM_UI_FLAG_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_FULLSCREEN|View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
+				View.SYSTEM_UI_FLAG_IMMERSIVE|View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY|View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_LAYOUT_STABLE|View.SYSTEM_UI_FLAG_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_FULLSCREEN|View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
 		}
 	}
 
@@ -217,7 +216,7 @@ public class FullImage extends AppCompatActivity
 		{
 			@NonNull
 			final View decorView=getWindow().getDecorView();
-			decorView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE|View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
+			decorView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE|View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
 			if(Build.VERSION.SDK_INT >= STATUSBARCOLORAPI)
 			{
 				getWindow().setFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS,WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
@@ -286,9 +285,9 @@ public class FullImage extends AppCompatActivity
 	@Override
 	protected void onCreate(Bundle savedInstanceState)
 	{
-		initSettings();
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_full_image);
+		initSettings();
 		setHomeButton();
 		initStatic();
 		@NonNull

@@ -7,12 +7,14 @@
 	android:layout_width="match_parent"
 	android:layout_height="match_parent"
 	android:background="@color/backgroundColor"
+	android:clipChildren="false"
+	android:clipToPadding="false"
 	android:gravity="center"
 	android:orientation="vertical"
 	tools:context=".FullImage"
 	tools:ignore="Overdraw">
 
-	<com.github.chrisbanes.photoview.PhotoView
+	<com.example.gallery.PhotoView
 		android:id="@+id/photo_view"
 		android:layout_width="match_parent"
 		android:layout_height="match_parent" />

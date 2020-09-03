@@ -26,7 +26,6 @@ android {
 dependencies {
     implementation fileTree(dir: "libs", include: ["*.jar"])
     implementation 'com.github.ybq:Android-SpinKit:1.4.0'
-    implementation 'com.github.chrisbanes:PhotoView:2.0.0'
     implementation 'com.muddzdev:styleabletoast:2.2.3'
     //noinspection NewerVersionAvailable
     implementation 'com.squareup.okhttp3:okhttp:3.12.0'
