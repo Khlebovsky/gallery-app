@@ -3,6 +3,7 @@ package com.example.gallery;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.res.Resources;
 import android.os.Bundle;
 import android.view.MenuItem;
 import android.view.View;
@@ -19,11 +20,17 @@ import androidx.appcompat.app.AppCompatActivity;
 
 public class SaveImage extends AppCompatActivity
 {
+	@Nullable
 	public static ImageView imageView;
+	@Nullable
 	static Context context;
 	static String url;
+	@Nullable
 	static SaveImage saveImage;
+	@Nullable
 	static ImageButton applyButton;
+	@Nullable
+	static Resources resources;
 	@NonNull
 	private static final String MIMETYPE_TEXT="text/plain";
 
@@ -31,43 +38,60 @@ public class SaveImage extends AppCompatActivity
 	{
 		@Nullable
 		final String imageUrl=intent.getStringExtra(Intent.EXTRA_TEXT);
-		if(imageUrl!=null)
+		@Nullable
+		final ImageView imageView_=imageView;
+		if(imageView_!=null)
 		{
-			url=imageUrl;
-			setTitle(url);
-			final int size=MainActivity.resources.getDimensionPixelSize(R.dimen.preloaderSize);
-			imageView.setLayoutParams(new LinearLayout.LayoutParams(size,size));
-			imageView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
-			imageView.setImageResource(R.drawable.progress);
-			new ShowSavedImageThread().start();
-		}
-		else
-		{
-			showSaveImageAlertDialog("Invalid link");
-			imageView.setImageResource(R.drawable.ic_error);
+			if(imageUrl!=null)
+			{
+				url=imageUrl;
+				setTitle(url);
+				@Nullable
+				final Resources resources_=resources;
+				if(resources_!=null)
+				{
+					final int size=resources_.getDimensionPixelSize(R.dimen.preloaderSize);
+					imageView_.setLayoutParams(new LinearLayout.LayoutParams(size,size));
+				}
+				imageView_.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+				imageView_.setImageResource(R.drawable.progress);
+				new ShowSavedImageThread().start();
+			}
+			else
+			{
+				showSaveImageAlertDialog("Invalid link");
+				imageView_.setImageResource(R.drawable.ic_error);
+			}
 		}
 	}
 
 	void initStatic()
 	{
-		if(MainActivity.cache==null)
+		if(MainActivity.cacheDir==null)
 		{
 			MainActivity.initCacheDirs(getBaseContext());
 		}
-		if(MainActivity.resources==null)
-		{
-			MainActivity.resources=getResources();
-		}
+		resources=getResources();
 		saveImage=SaveImage.this;
 		context=SaveImage.this;
 		imageView=findViewById(R.id.share_image_view);
 		@NonNull
 		final ImageButton cancelButton=findViewById(R.id.cancel_button);
 		applyButton=findViewById(R.id.apply_button);
-		final int size=MainActivity.resources.getDimensionPixelSize(R.dimen.preloaderSize);
-		imageView.setLayoutParams(new LinearLayout.LayoutParams(size,size));
-		imageView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
-		imageView.setImageResource(R.drawable.progress);
+		@Nullable
+		final ImageView imageView_=imageView;
+		if(imageView_!=null)
+		{
+			@Nullable
+			final Resources resources_=resources;
+			if(resources_!=null)
+			{
+				final int size=resources_.getDimensionPixelSize(R.dimen.preloaderSize);
+				imageView_.setLayoutParams(new LinearLayout.LayoutParams(size,size));
+			}
+			imageView_.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+			imageView_.setImageResource(R.drawable.progress);
+		}
 		cancelButton.setOnClickListener(new View.OnClickListener()
 		{
 			@Override
@@ -76,27 +100,32 @@ public class SaveImage extends AppCompatActivity
 				finish();
 			}
 		});
-		applyButton.setOnClickListener(new View.OnClickListener()
+		@Nullable
+		final ImageButton applyButton_=applyButton;
+		if(applyButton_!=null)
 		{
-			@Override
-			public void onClick(View view)
+			applyButton_.setOnClickListener(new View.OnClickListener()
 			{
-				ClientServer.addImage(url);
-				@NonNull
-				final Intent intent=new Intent(SaveImage.this,MainActivity.class);
-				intent.setPackage(getPackageName());
-				try
+				@Override
+				public void onClick(View view)
 				{
-					startActivity(intent);
+					ClientServer.addImage(url);
+					@NonNull
+					final Intent intent=new Intent(SaveImage.this,MainActivity.class);
+					intent.setPackage(getPackageName());
+					try
+					{
+						startActivity(intent);
+					}
+					catch(Exception e)
+					{
+						e.printStackTrace();
+					}
+					ImagesAdapter.callNotifyDataSetChanged();
+					finish();
 				}
-				catch(Exception e)
-				{
-					e.printStackTrace();
-				}
-				ImageDownloader.callNotifyDataSetChanged();
-				finish();
-			}
-		});
+			});
+		}
 	}
 
 	@Override
@@ -140,7 +169,7 @@ public class SaveImage extends AppCompatActivity
 			{
 				e.printStackTrace();
 			}
-			ImageDownloader.callNotifyDataSetChanged();
+			ImagesAdapter.callNotifyDataSetChanged();
 			finish();
 			return true;
 		}
@@ -160,37 +189,47 @@ public class SaveImage extends AppCompatActivity
 
 	public static void showSaveImageAlertDialog(@NonNull final String error)
 	{
-		saveImage.runOnUiThread(new Runnable()
+		@Nullable
+		final SaveImage saveImage_=saveImage;
+		if(saveImage_!=null)
 		{
-			@Override
-			public void run()
+			saveImage_.runOnUiThread(new Runnable()
 			{
-				@NonNull
-				final AlertDialog.Builder builder=new AlertDialog.Builder(saveImage,R.style.AlertDialogTheme);
-				builder.setCancelable(false);
-				builder.setTitle("Ошибка");
-				builder.setMessage("Ошибка: \n"+error);
-				builder.setPositiveButton("ОК",new AlertDialogOnClickListener());
-				builder.show();
-			}
-		});
+				@Override
+				public void run()
+				{
+					@NonNull
+					final AlertDialog.Builder builder=new AlertDialog.Builder(saveImage_,R.style.AlertDialogTheme);
+					builder.setCancelable(false);
+					builder.setTitle("Ошибка");
+					builder.setMessage("Ошибка: \n"+error);
+					builder.setPositiveButton("ОК",new AlertDialogOnClickListener());
+					builder.show();
+				}
+			});
+		}
 	}
 
 	static void showWarningAlertDialog()
 	{
-		saveImage.runOnUiThread(new Runnable()
+		@Nullable
+		final SaveImage saveImage_=saveImage;
+		if(saveImage_!=null)
 		{
-			@Override
-			public void run()
+			saveImage_.runOnUiThread(new Runnable()
 			{
-				@NonNull
-				final AlertDialog.Builder builder=new AlertDialog.Builder(saveImage,R.style.AlertDialogTheme);
-				builder.setCancelable(true);
-				builder.setMessage("Картинка уже есть в списке");
-				builder.setPositiveButton("ОК",new WarningAlertDialogOnClickListener());
-				builder.show();
-			}
-		});
+				@Override
+				public void run()
+				{
+					@NonNull
+					final AlertDialog.Builder builder=new AlertDialog.Builder(saveImage_,R.style.AlertDialogTheme);
+					builder.setCancelable(true);
+					builder.setMessage("Картинка уже есть в списке");
+					builder.setPositiveButton("ОК",new WarningAlertDialogOnClickListener());
+					builder.show();
+				}
+			});
+		}
 	}
 
 	static class AlertDialogOnClickListener implements DialogInterface.OnClickListener
@@ -198,7 +237,10 @@ public class SaveImage extends AppCompatActivity
 		@Override
 		public void onClick(DialogInterface dialogInterface,int i)
 		{
-			saveImage.finish();
+			if(saveImage!=null)
+			{
+				saveImage.finish();
+			}
 		}
 	}
 
@@ -226,17 +268,34 @@ public class SaveImage extends AppCompatActivity
 			{
 				e.printStackTrace();
 			}
-			if(isImageInGallery)
+			@Nullable
+			final ImageView imageView_=imageView;
+			@Nullable
+			final Context context_=context;
+			if(imageView_!=null&&context_!=null)
 			{
-				applyButton.setClickable(false);
-				applyButton.setEnabled(false);
-				applyButton.setBackgroundColor(MainActivity.resources.getColor(R.color.colorPrimaryDark));
-				showWarningAlertDialog();
-				ImageDownloader.getImageFromSharing(url,imageView,context);
-			}
-			else
-			{
-				ImageDownloader.downloadImageFromSharing(url,imageView,context);
+				if(isImageInGallery)
+				{
+					@Nullable
+					final ImageButton applyButton_=applyButton;
+					if(applyButton_!=null)
+					{
+						applyButton_.setClickable(false);
+						applyButton_.setEnabled(false);
+						@Nullable
+						final Resources resources_=resources;
+						if(resources_!=null)
+						{
+							applyButton_.setBackgroundColor(resources_.getColor(R.color.colorPrimaryDark));
+						}
+					}
+					showWarningAlertDialog();
+					ImagesDownloader.getImageFromDiskToSaveScreen(url,imageView_,context_);
+				}
+				else
+				{
+					ImagesDownloader.downloadImageToSaveScreen(url,imageView_,context_);
+				}
 			}
 		}
 	}

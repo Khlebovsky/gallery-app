@@ -1,16 +1,29 @@
 package com.example.gallery;
 
 import android.content.Context;
+import android.content.res.Resources;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.MotionEvent;
+import android.view.ViewConfiguration;
 import android.widget.LinearLayout;
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import static com.example.gallery.FullImage.photoView;
 
 public class ImageCustomView extends LinearLayout
 {
+	public static final float MAX_DRAG_ZOOM=1.1f;
+	public static final float MIN_DRAG_ZOOM=1;
+	static float offsetDY;
+	static float downLength;
+	static int touchSlop;
+	static boolean isTouch;
+	static int imageShiftThreshold;
+	@Nullable
+	private static Resources resources;
+
 	public ImageCustomView(Context context,@Nullable AttributeSet attrs)
 	{
 		super(context,attrs);
@@ -21,52 +34,77 @@ public class ImageCustomView extends LinearLayout
 		super(context,attrs,defStyleAttr);
 	}
 
+	public static void initStatic(@Nullable final Context context)
+	{
+		if(context!=null)
+		{
+			resources=context.getResources();
+		}
+		@Nullable
+		final PhotoView photoView_=photoView;
+		if(photoView_!=null)
+		{
+			@NonNull
+			final ViewConfiguration viewConfiguration=ViewConfiguration.get(photoView_.getContext());
+			touchSlop=viewConfiguration.getScaledTouchSlop();
+		}
+		@Nullable
+		final Resources resources_=resources;
+		if(resources_!=null)
+		{
+			imageShiftThreshold=resources_.getDimensionPixelSize(R.dimen.imageShiftThreshold);
+		}
+	}
+
 	@Override
 	public boolean onInterceptTouchEvent(MotionEvent motionEvent)
 	{
-		if(photoView.getScale() >= FullImage.MIN_DRAG_ZOOM&&photoView.getScale()<=FullImage.MAX_DRAG_ZOOM)
+		@Nullable
+		final PhotoView photoView_=photoView;
+		if(photoView_!=null&&photoView_.getScale() >= MIN_DRAG_ZOOM&&photoView_.getScale()<=MAX_DRAG_ZOOM)
 		{
-			final float currentLocationY=Math.abs(photoView.getY());
+			final int imageShiftThreshold_=imageShiftThreshold;
+			final float currentImagePositionY=Math.abs(photoView_.getY());
 			switch(motionEvent.getAction())
 			{
 				case MotionEvent.ACTION_DOWN:
-					FullImage.downLength=motionEvent.getY();
-					FullImage.offsetDY=photoView.getY()-motionEvent.getRawY();
+					downLength=motionEvent.getY();
+					offsetDY=photoView_.getY()-motionEvent.getRawY();
 					break;
 				case MotionEvent.ACTION_UP:
-					if(currentLocationY >= FullImage.imageShiftThreshold)
+					if(currentImagePositionY >= imageShiftThreshold_)
 					{
 						FullImage.closeActivity();
 						break;
 					}
-					FullImage.isTouch=false;
-					if(!photoView.isZoomable())
+					isTouch=false;
+					if(!photoView_.isZoomable())
 					{
-						photoView.setZoomable(true);
+						photoView_.setZoomable(true);
 					}
-					photoView.animate().y(0).setDuration(200).start();
+					photoView_.animate().y(0).setDuration(200).start();
 					break;
 				case MotionEvent.ACTION_MOVE:
-					final float currentDownLength=Math.abs(FullImage.downLength-motionEvent.getY());
-					if(currentDownLength >= FullImage.touchSlop&&!FullImage.isTouch)
+					final float currentDownLength=Math.abs(downLength-motionEvent.getY());
+					if(currentDownLength >= touchSlop&&!isTouch)
 					{
-						FullImage.isTouch=true;
+						isTouch=true;
 					}
-					if(FullImage.isTouch)
+					if(isTouch)
 					{
-						if(photoView.isZoomable())
+						if(photoView_.isZoomable())
 						{
-							photoView.setZoomable(false);
+							photoView_.setZoomable(false);
 						}
-						photoView.animate().y(motionEvent.getRawY()+FullImage.offsetDY).setDuration(0).start();
-						if(currentLocationY >= FullImage.imageShiftThreshold)
+						photoView_.animate().y(motionEvent.getRawY()+offsetDY).setDuration(0).start();
+						if(currentImagePositionY >= imageShiftThreshold_)
 						{
-							final float transparencyCoefficient=(float)(1-Math.sqrt(Math.abs(currentLocationY/1000)));
-							photoView.animate().alpha(transparencyCoefficient).setDuration(0).start();
+							final float transparencyCoefficient=(float)(1-Math.sqrt(Math.abs(currentImagePositionY/1000)));
+							photoView_.animate().alpha(transparencyCoefficient).setDuration(0).start();
 						}
 						else
 						{
-							photoView.animate().alpha(1).setDuration(0).start();
+							photoView_.animate().alpha(1).setDuration(0).start();
 						}
 					}
 					break;

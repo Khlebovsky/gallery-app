@@ -1,11 +1,11 @@
 package com.example.gallery;
 
 import android.content.Context;
+import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.os.Handler;
-import android.os.Looper;
-import android.os.Message;
+import android.util.Log;
+import android.util.LruCache;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -21,135 +21,32 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
-public final class ImageDownloader
+public final class ImagesDownloader
 {
 	@NonNull
-	public static final GalleryHandler GALLERY_HANDLER=new GalleryHandler();
-	@NonNull
-	public static final HashMap<String,String> FILE_NAMES=new HashMap<>();
+	public static final HashMap<String,String> URLS_FILE_NAMES=new HashMap<>();
 	@NonNull
 	public static final ArrayList<String> NO_INTERNET_LINKS=new ArrayList<>();
 	public static final int MAX_BITMAP_SIZE=4096;
 	@NonNull
 	static final ArrayList<String> URLS_IN_PROGRESS=new ArrayList<>();
 	@Nullable
-	static final File PREVIEWS=MainActivity.previews;
+	static final File PREVIEWS=MainActivity.imagePreviewsDir;
 	@Nullable
-	static final File BYTES=MainActivity.bytes;
+	static final File BYTES=MainActivity.imageBytesDir;
 	static final int ERROR_TIME_SLEEP=1500;
 	static final int CONTROL_NUMBER_OF_BYTES=50000;
 	public static int REPEAT_NUM=3;
 	static int imageWidth;
 	private static int MAX_THREAD_NUM=2;
+	@Nullable
+	private static Resources resources;
 
-	private ImageDownloader()
+	private ImagesDownloader()
 	{
 	}
 
-	public static void addBitmapToMemoryCache(@NonNull String key,@NonNull Bitmap bitmap)
-	{
-		if(getBitmapFromMemoryCache(key)==null)
-		{
-			try
-			{
-				if(MainActivity.memoryCache!=null)
-				{
-					MainActivity.memoryCache.put(key,bitmap);
-				}
-			}
-			catch(Exception e)
-			{
-				e.printStackTrace();
-			}
-		}
-	}
-
-	public static void addStringToLinksfile(@NonNull final String url)
-	{
-		if(MainActivity.linksFile!=null)
-		{
-			@NonNull
-			final ArrayList<String> LinksFileString=new ArrayList<>();
-			try
-			{
-				@NonNull
-				final BufferedReader bufferedReader=new BufferedReader(new FileReader(MainActivity.linksFile));
-				String string;
-				while((string=bufferedReader.readLine())!=null)
-				{
-					LinksFileString.add(string);
-				}
-				LinksFileString.add(url);
-				bufferedReader.close();
-				@NonNull
-				final BufferedWriter bufferedWriter=new BufferedWriter(new FileWriter(MainActivity.linksFile));
-				for(final String str : LinksFileString)
-				{
-					bufferedWriter.write(str+'\n');
-				}
-				bufferedWriter.flush();
-				bufferedReader.close();
-			}
-			catch(Exception e)
-			{
-				e.printStackTrace();
-			}
-			callNotifyDataSetChanged();
-		}
-	}
-
-	public static void callNotifyDataSetChanged()
-	{
-		@NonNull
-		final Message message=ImageDownloader.GALLERY_HANDLER.obtainMessage();
-		ImageDownloader.GALLERY_HANDLER.sendMessage(message);
-	}
-
-	static void deleteImageFromDisk(@Nullable final String fileName)
-	{
-		if(fileName!=null)
-		{
-			try
-			{
-				int num=0;
-				@NonNull
-				final BufferedReader bufferedReader=new BufferedReader(new FileReader(MainActivity.linksFile));
-				String string;
-				while((string=bufferedReader.readLine())!=null)
-				{
-					if(fileName.equals(urlToHashMD5(string)))
-					{
-						num++;
-					}
-				}
-				bufferedReader.close();
-				if(num>1)
-				{
-					@NonNull
-					final File fullImage=new File(MainActivity.bytes,fileName);
-					if(fullImage.exists())
-					{
-						//noinspection ResultOfMethodCallIgnored
-						fullImage.delete();
-					}
-					@NonNull
-					final File preview=new File(MainActivity.previews,fileName);
-					if(preview.exists())
-					{
-						//noinspection ResultOfMethodCallIgnored
-						preview.delete();
-					}
-					ImageDownloader.FILE_NAMES.remove(fileName);
-				}
-			}
-			catch(Exception e)
-			{
-				e.printStackTrace();
-			}
-		}
-	}
-
-	static void downloadImageFromSharing(@NonNull final String url,@NonNull final ImageView imageView,@NonNull final Context context)
+	static void downloadImageToSaveScreen(@NonNull final String url,@NonNull final ImageView imageView,@NonNull final Context context)
 	{
 		new Thread()
 		{
@@ -291,13 +188,13 @@ public final class ImageDownloader
 						final Bitmap bitmap=BitmapFactory.decodeFile(String.valueOf(path));
 						if(bitmap!=null)
 						{
-							addBitmapToMemoryCache(url,bitmap);
-							FILE_NAMES.put(url,urlHashMD5);
+							LruMemoryCache.addBitmapToMemoryCache(url,bitmap);
+							URLS_FILE_NAMES.put(url,urlHashMD5);
 						}
 						else
 						{
 							MainActivity.ERROR_LIST.put(url,"Decoding error");
-							FILE_NAMES.put(url,"error");
+							URLS_FILE_NAMES.put(url,"error");
 						}
 					}
 					catch(Exception e)
@@ -306,7 +203,7 @@ public final class ImageDownloader
 					}
 					URLS_IN_PROGRESS.remove(url);
 					ThreadsCounter.decreaseThreadsCounter();
-					callNotifyDataSetChanged();
+					ImagesAdapter.callNotifyDataSetChanged();
 				}
 			}.start();
 		}
@@ -319,7 +216,7 @@ public final class ImageDownloader
 				{
 					ThreadsCounter.increaseThreadsCounter();
 					@Nullable
-					String exeption=null;
+					String exception=null;
 					@Nullable
 					String status=null;
 					if(PREVIEWS!=null&&!PREVIEWS.exists())
@@ -384,6 +281,7 @@ public final class ImageDownloader
 													if(originalBitmapWidth==-1)
 													{
 														isImage=false;
+														break;
 													}
 												}
 												catch(Exception e)
@@ -412,7 +310,7 @@ public final class ImageDownloader
 											int originalBitmapWidth=options.outWidth;
 											if(originalBitmapWidth==-1)
 											{
-												exeption="Decoding error";
+												exception="Decoding error";
 												status="error";
 											}
 											else
@@ -443,8 +341,8 @@ public final class ImageDownloader
 												}
 												if(preview!=null)
 												{
-													addBitmapToMemoryCache(url,preview);
-													FILE_NAMES.put(url,urlHashMD5);
+													LruMemoryCache.addBitmapToMemoryCache(url,preview);
+													URLS_FILE_NAMES.put(url,urlHashMD5);
 													@NonNull
 													final File previewName=new File(PREVIEWS,urlHashMD5);
 													try
@@ -466,20 +364,20 @@ public final class ImageDownloader
 										catch(Exception e)
 										{
 											status="error";
-											exeption=String.valueOf(e);
+											exception=String.valueOf(e);
 											e.printStackTrace();
 										}
 									}
 									else
 									{
 										status="error";
-										exeption="The file is not a picture";
+										exception="The file is not a picture";
 									}
 								}
 								catch(Exception e)
 								{
 									status="error";
-									exeption=String.valueOf(e);
+									exception=String.valueOf(e);
 									e.printStackTrace();
 								}
 								finally
@@ -493,13 +391,13 @@ public final class ImageDownloader
 							else
 							{
 								status="Connection error";
-								exeption="Response code: "+response.code();
+								exception="Response code: "+response.code();
 							}
 						}
 						catch(Exception e)
 						{
 							status="error";
-							exeption=String.valueOf(e);
+							exception=String.valueOf(e);
 							e.printStackTrace();
 						}
 						if(!MainActivity.isConnected)
@@ -520,44 +418,39 @@ public final class ImageDownloader
 							NO_INTERNET_LINKS.add(url);
 							break;
 						}
-						if(i==REPEAT_NUM-1&&status!=null&&exeption!=null)
+						if(i==REPEAT_NUM-1&&status!=null&&exception!=null)
 						{
-							MainActivity.ERROR_LIST.put(url,exeption);
-							MainActivity.LINKS_STATUS.put(url,status);
-							FILE_NAMES.put(url,"error");
+							MainActivity.ERROR_LIST.put(url,exception);
+							MainActivity.URLS_LINKS_STATUS.put(url,status);
+							URLS_FILE_NAMES.put(url,"error");
 						}
 					}
 					URLS_IN_PROGRESS.remove(url);
 					ThreadsCounter.decreaseThreadsCounter();
-					callNotifyDataSetChanged();
+					ImagesAdapter.callNotifyDataSetChanged();
 				}
 			}.start();
 		}
 	}
 
-	public static Bitmap getBitmapFromMemoryCache(@NonNull String key)
-	{
-		return MainActivity.memoryCache!=null?MainActivity.memoryCache.get(key):null;
-	}
-
 	public static Bitmap getImageBitmap(@NonNull final String url)
 	{
 		@Nullable
-		final Bitmap bitmap=getBitmapFromMemoryCache(url);
+		final Bitmap bitmap=LruMemoryCache.getBitmapFromMemoryCache(url);
 		if(bitmap!=null)
 		{
 			return bitmap;
 		}
 		if(ThreadsCounter.getThreadCount()<MAX_THREAD_NUM)
 		{
-			if(FILE_NAMES.containsKey(url)&&URLS_IN_PROGRESS.contains(url))
+			if(URLS_FILE_NAMES.containsKey(url)&&URLS_IN_PROGRESS.contains(url))
 			{
 				URLS_IN_PROGRESS.remove(url);
-				if(MainActivity.memoryCache!=null)
+				if(LruMemoryCache.memoryCache!=null)
 				{
-					MainActivity.memoryCache.remove(url);
+					LruMemoryCache.memoryCache.remove(url);
 				}
-				callNotifyDataSetChanged();
+				ImagesAdapter.callNotifyDataSetChanged();
 			}
 			if(!URLS_IN_PROGRESS.contains(url))
 			{
@@ -575,7 +468,7 @@ public final class ImageDownloader
 		return null;
 	}
 
-	static void getImageFromSharing(@NonNull final String url,@NonNull final ImageView imageView,@NonNull final Context context)
+	static void getImageFromDiskToSaveScreen(@NonNull final String url,@NonNull final ImageView imageView,@NonNull final Context context)
 	{
 		new Thread()
 		{
@@ -593,7 +486,7 @@ public final class ImageDownloader
 					else
 					{
 						@NonNull
-						final File path=new File(MainActivity.bytes,fileName);
+						final File path=new File(MainActivity.imageBytesDir,fileName);
 						@NonNull
 						final BitmapFactory.Options options=new BitmapFactory.Options();
 						options.inJustDecodeBounds=true;
@@ -661,18 +554,25 @@ public final class ImageDownloader
 		}.start();
 	}
 
-	public static void initStatic()
+	public static void initStatic(@Nullable final Context context)
 	{
-		imageWidth=MainActivity.resources.getDimensionPixelSize(R.dimen.imageWidth);
+		if(context!=null)
+		{
+			resources=context.getResources();
+		}
+		if(resources!=null)
+		{
+			imageWidth=resources.getDimensionPixelSize(R.dimen.imageWidth);
+		}
+		Log.d("123",String.valueOf(imageWidth));
 		try
 		{
-			int numOfCPUThreads=0;
+			int cpuThreadsNum=0;
 			@NonNull
 			final String systemPath="/sys/devices/system/cpu/";
 			@NonNull
 			final File systemDir=new File(systemPath);
-			//noinspection ConstantConditions
-			@NonNull
+			@Nullable
 			final File[] files=systemDir.listFiles();
 			if(files!=null&&files.length!=0)
 			{
@@ -682,68 +582,11 @@ public final class ImageDownloader
 					final String dir=file.toString().substring(systemPath.length());
 					if(dir.matches("cpu"+"[0-9]"))
 					{
-						numOfCPUThreads++;
+						cpuThreadsNum++;
 					}
 				}
 			}
-			MAX_THREAD_NUM=numOfCPUThreads>2?4:2;
-		}
-		catch(Exception e)
-		{
-			e.printStackTrace();
-		}
-	}
-
-	public static void removeStringFromLinksfile(int numToDelete)
-	{
-		if(MainActivity.linksFile!=null)
-		{
-			@NonNull
-			final ArrayList<String> LinksFileString=new ArrayList<>();
-			try
-			{
-				@NonNull
-				final BufferedReader bufferedReader=new BufferedReader(new FileReader(MainActivity.linksFile));
-				String string;
-				while((string=bufferedReader.readLine())!=null)
-				{
-					if(!string.equals(ImageAdapter.URLS.get(numToDelete)))
-					{
-						LinksFileString.add(string);
-					}
-				}
-				bufferedReader.close();
-				@NonNull
-				final BufferedWriter bufferedWriter=new BufferedWriter(new FileWriter(MainActivity.linksFile));
-				for(final String str : LinksFileString)
-				{
-					bufferedWriter.write(str+'\n');
-				}
-				bufferedWriter.flush();
-				bufferedReader.close();
-			}
-			catch(Exception e)
-			{
-				e.printStackTrace();
-			}
-			callNotifyDataSetChanged();
-		}
-	}
-
-	public static void updateUrlsList()
-	{
-		ImageAdapter.URLS.clear();
-		try
-		{
-			@NonNull
-			final BufferedReader bufferedReader=new BufferedReader(new FileReader(MainActivity.linksFile));
-			String url;
-			while((url=bufferedReader.readLine())!=null)
-			{
-				ImageAdapter.URLS.add(url);
-				MainActivity.LINKS_STATUS.put(url,"progress");
-			}
-			bufferedReader.close();
+			MAX_THREAD_NUM=cpuThreadsNum>2?4:2;
 		}
 		catch(Exception e)
 		{
@@ -773,23 +616,6 @@ public final class ImageDownloader
 			e.printStackTrace();
 		}
 		return "";
-	}
-
-	static class GalleryHandler extends Handler
-	{
-		GalleryHandler()
-		{
-			super(Looper.getMainLooper());
-		}
-
-		@Override
-		public void handleMessage(@NonNull Message msg)
-		{
-			if(MainActivity.imageAdapter!=null)
-			{
-				MainActivity.imageAdapter.notifyDataSetChanged();
-			}
-		}
 	}
 
 	public static final class ThreadsCounter

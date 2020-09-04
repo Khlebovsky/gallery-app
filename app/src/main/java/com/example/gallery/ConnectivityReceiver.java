@@ -3,7 +3,6 @@ package com.example.gallery;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import androidx.annotation.NonNull;
 
 public class ConnectivityReceiver extends BroadcastReceiver
 {
@@ -13,8 +12,8 @@ public class ConnectivityReceiver extends BroadcastReceiver
 		if(MainActivity.isInternet())
 		{
 			MainActivity.isConnected=true;
-			ImageDownloader.NO_INTERNET_LINKS.clear();
-			ImageDownloader.callNotifyDataSetChanged();
+			ImagesDownloader.NO_INTERNET_LINKS.clear();
+			ImagesAdapter.callNotifyDataSetChanged();
 		}
 		else
 		{

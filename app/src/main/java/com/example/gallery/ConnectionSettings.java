@@ -20,32 +20,24 @@ public final class ConnectionSettings
 	{
 	}
 
-	public static SSLSocketFactory getTLSSocketFactory() throws NoSuchAlgorithmException, KeyManagementException
+	public static SSLSocketFactory getTLSSocketFactory() throws NoSuchAlgorithmException, KeyManagementException, KeyStoreException
 	{
 		@NonNull
 		final SSLContext ctx=SSLContext.getInstance("TLS");
 		ctx.init(null,getTrustManager(),null);
 		@NonNull
 		final SSLSocketFactory sslSocketFactory=ctx.getSocketFactory();
-		@Nullable
+		@NonNull
 		final SSLSocketFactory tlsSocketFactory=Build.VERSION.SDK_INT<=Build.VERSION_CODES.KITKAT?new TLSSocketFactory(sslSocketFactory):sslSocketFactory;
 		return tlsSocketFactory;
 	}
 
-	public static X509TrustManager[] getTrustManager()
+	public static X509TrustManager[] getTrustManager() throws KeyStoreException, NoSuchAlgorithmException
 	{
 		@Nullable
-		X509TrustManager[] myTrustManager=null;
-		try
-		{
-			myTrustManager=new X509TrustManager[]{
-				new MyTrustedManager()
-			};
-		}
-		catch(Exception e)
-		{
-			e.printStackTrace();
-		}
+		final X509TrustManager[] myTrustManager={
+			new MyTrustedManager()
+		};
 		return myTrustManager;
 	}
 
@@ -53,20 +45,22 @@ public final class ConnectionSettings
 	{
 		@NonNull
 		public static final X509Certificate[] X_509_CERTIFICATES=new X509Certificate[0];
-		static TrustManager[] tms;
-		X509TrustManager pkixTrustManager;
+		@Nullable
+		static TrustManager[] trustManagers;
+		@Nullable
+		X509TrustManager x509TrustManager;
 
 		public MyTrustedManager() throws NoSuchAlgorithmException, KeyStoreException
 		{
 			@NonNull
-			final TrustManagerFactory factory=TrustManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
-			factory.init((KeyStore)null);
-			tms=factory.getTrustManagers();
-			for(final TrustManager tm : tms)
+			final TrustManagerFactory trustManagerFactory=TrustManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+			trustManagerFactory.init((KeyStore)null);
+			trustManagers=trustManagerFactory.getTrustManagers();
+			for(final TrustManager trustManager : trustManagers)
 			{
-				if(tm instanceof X509TrustManager)
+				if(trustManager instanceof X509TrustManager)
 				{
-					pkixTrustManager=(X509TrustManager)tm;
+					x509TrustManager=(X509TrustManager)trustManager;
 				}
 			}
 		}
@@ -74,19 +68,18 @@ public final class ConnectionSettings
 		@Override
 		public void checkClientTrusted(X509Certificate[] x509Certificates,String s) throws CertificateException
 		{
-			pkixTrustManager.checkServerTrusted(x509Certificates,s);
+			if(x509TrustManager!=null)
+			{
+				x509TrustManager.checkServerTrusted(x509Certificates,s);
+			}
 		}
 
 		@Override
-		public void checkServerTrusted(X509Certificate[] x509Certificates,String s)
+		public void checkServerTrusted(X509Certificate[] x509Certificates,String s) throws CertificateException
 		{
-			try
+			if(x509TrustManager!=null)
 			{
-				pkixTrustManager.checkServerTrusted(x509Certificates,s);
-			}
-			catch(Throwable e)
-			{
-				e.printStackTrace();
+				x509TrustManager.checkServerTrusted(x509Certificates,s);
 			}
 		}
 

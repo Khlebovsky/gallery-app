@@ -8,6 +8,7 @@ import android.app.PendingIntent;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.ResolveInfo;
+import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
@@ -35,56 +36,65 @@ import androidx.core.app.NotificationManagerCompat;
 
 public class FullImage extends AppCompatActivity
 {
-	public static final float MAX_DRAG_ZOOM=1.1f;
 	public static final float MEDIUM_ZOOM=3;
-	public static final float MIN_DRAG_ZOOM=1;
 	public static final float MAX_ZOOM=10;
+	@Nullable
 	public static Activity fullImage;
 	static boolean isFullScreen;
 	static int num;
+	@Nullable
 	static PhotoView photoView;
+	@Nullable
 	static String url;
+	@Nullable
 	static NotificationManagerCompat notificationManagerCompat;
-	static float offsetDY;
-	static float downLength;
-	static int touchSlop;
-	static boolean isTouch;
-	static int imageShiftThreshold;
-	private static final int CUTOUTAPI=28;
-	private static final int NOTIFICATIONCHANNELAPI=26;
-	private static final int FULLSCREENAPI=19;
-	private static final int STATUSBARCOLORAPI=21;
+	@Nullable
+	static Resources resources;
+	private static final int CUTOUT_API=28;
+	private static final int NOTIFICATION_CHANNEL_API=26;
+	private static final int FULL_SCREEN_API=19;
+	private static final int STATUS_BAR_COLOR_API=21;
 	@NonNull
 	private static final String LOADED_IMAGE_TAG="loaded";
 	private static final int NOTIFY_ID=101;
 	@NonNull
 	private static final String SHARE_INTENT_TYPE="text/plain";
-	private static final int INTENTCHOOSERAPI=23;
+	private static final int INTENT_CHOOSER_API=23;
+	private static final int REQUEST_CODE=100;
 
 	public static void closeActivity()
 	{
-		photoView.animate().alpha(0).setDuration(50).start();
-		new Handler().postDelayed(new Runnable()
+		@Nullable
+		final PhotoView photoView_=photoView;
+		@Nullable
+		final Activity fullImage_=fullImage;
+		if(photoView_!=null&&fullImage_!=null)
 		{
-			@Override
-			public void run()
+			photoView_.animate().alpha(0).setDuration(50).start();
+			new Handler().postDelayed(new Runnable()
 			{
-				fullImage.finish();
-			}
-		},50);
+				@Override
+				public void run()
+				{
+					fullImage_.finish();
+				}
+			},50);
+		}
 	}
 
 	void createNotificationChannel()
 	{
-		if(Build.VERSION.SDK_INT >= NOTIFICATIONCHANNELAPI)
+		@Nullable
+		final Resources resources_=resources;
+		if(Build.VERSION.SDK_INT >= NOTIFICATION_CHANNEL_API&&resources_!=null)
 		{
 			@NonNull
-			final CharSequence name=MainActivity.resources.getString(R.string.channel_name);
+			final CharSequence name=resources_.getString(R.string.channel_name);
 			@NonNull
-			final String description=MainActivity.resources.getString(R.string.channel_description);
+			final String description=resources_.getString(R.string.channel_description);
 			final int importance=NotificationManager.IMPORTANCE_DEFAULT;
 			@NonNull
-			final NotificationChannel channel=new NotificationChannel(MainActivity.resources.getString(R.string.channel_name),name,importance);
+			final NotificationChannel channel=new NotificationChannel(resources_.getString(R.string.channel_name),name,importance);
 			channel.setDescription(description);
 			@NonNull
 			final NotificationManager notificationManager=getSystemService(NotificationManager.class);
@@ -94,12 +104,11 @@ public class FullImage extends AppCompatActivity
 
 	PendingIntent getActionBackPendingIntent()
 	{
-		final int requestCode=100;
 		@NonNull
 		final Intent actionBackIntent=new Intent(FullImage.this,FullImage.class);
 		actionBackIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_SINGLE_TOP);
 		@NonNull
-		final PendingIntent actionBackPendingIntent=PendingIntent.getActivity(FullImage.this,requestCode,actionBackIntent,PendingIntent.FLAG_CANCEL_CURRENT);
+		final PendingIntent actionBackPendingIntent=PendingIntent.getActivity(FullImage.this,REQUEST_CODE,actionBackIntent,PendingIntent.FLAG_CANCEL_CURRENT);
 		return actionBackPendingIntent;
 	}
 
@@ -124,12 +133,12 @@ public class FullImage extends AppCompatActivity
 		return actionShare;
 	}
 
-	static File getImagePath(@Nullable File dir)
+	static File getImagePath(@Nullable final File dir)
 	{
-		@Nullable
-		final String fileName=ImageDownloader.FILE_NAMES.containsKey(url)?ImageDownloader.FILE_NAMES.get(url):null;
-		if(fileName!=null&&dir!=null)
+		if(dir!=null&&url!=null)
 		{
+			@NonNull
+			final String fileName=ImagesDownloader.urlToHashMD5(url);
 			@NonNull
 			final File path=new File(dir,fileName);
 			return path;
@@ -140,7 +149,7 @@ public class FullImage extends AppCompatActivity
 	static Bitmap getNotificationLargeIcon()
 	{
 		@Nullable
-		final Bitmap bitmap=BitmapFactory.decodeFile(String.valueOf(getImagePath(MainActivity.previews)));
+		final Bitmap bitmap=BitmapFactory.decodeFile(String.valueOf(getImagePath(MainActivity.imagePreviewsDir)));
 		return bitmap;
 	}
 
@@ -148,7 +157,7 @@ public class FullImage extends AppCompatActivity
 	{
 		@NonNull
 		final Intent resultIntent;
-		if(Build.VERSION.SDK_INT >= INTENTCHOOSERAPI)
+		if(Build.VERSION.SDK_INT >= INTENT_CHOOSER_API)
 		{
 			@NonNull
 			final Intent shareIntent=new Intent(Intent.ACTION_SEND);
@@ -188,12 +197,17 @@ public class FullImage extends AppCompatActivity
 
 	public static void hideDefaultNotification()
 	{
-		notificationManagerCompat.cancelAll();
+		@Nullable
+		final NotificationManagerCompat notificationManagerCompat_=notificationManagerCompat;
+		if(notificationManagerCompat_!=null)
+		{
+			notificationManagerCompat_.cancelAll();
+		}
 	}
 
 	void hideSystemUI()
 	{
-		if(Build.VERSION.SDK_INT >= FULLSCREENAPI)
+		if(Build.VERSION.SDK_INT >= FULL_SCREEN_API)
 		{
 			@NonNull
 			final View decorView=getWindow().getDecorView();
@@ -213,15 +227,20 @@ public class FullImage extends AppCompatActivity
 
 	void initFlags()
 	{
-		if(Build.VERSION.SDK_INT >= FULLSCREENAPI)
+		if(Build.VERSION.SDK_INT >= FULL_SCREEN_API)
 		{
 			@NonNull
 			final View decorView=getWindow().getDecorView();
 			decorView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE|View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
-			if(Build.VERSION.SDK_INT >= STATUSBARCOLORAPI)
+			if(Build.VERSION.SDK_INT >= STATUS_BAR_COLOR_API)
 			{
 				getWindow().setFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS,WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
-				getWindow().setStatusBarColor(MainActivity.resources.getColor(R.color.transparentStatusBarColor));
+				@Nullable
+				final Resources resources_=resources;
+				if(resources_!=null)
+				{
+					getWindow().setStatusBarColor(resources_.getColor(R.color.transparentStatusBarColor));
+				}
 			}
 		}
 	}
@@ -229,7 +248,7 @@ public class FullImage extends AppCompatActivity
 	void initSettings()
 	{
 		initFlags();
-		if(Build.VERSION.SDK_INT >= CUTOUTAPI)
+		if(Build.VERSION.SDK_INT >= CUTOUT_API)
 		{
 			initDisplayCutout();
 		}
@@ -237,13 +256,10 @@ public class FullImage extends AppCompatActivity
 
 	void initStatic()
 	{
-		if(MainActivity.resources==null)
-		{
-			MainActivity.resources=getResources();
-		}
+		resources=getResources();
 		fullImage=FullImage.this;
 		photoView=findViewById(R.id.photo_view);
-		if(Build.VERSION.SDK_INT >= FULLSCREENAPI)
+		if(Build.VERSION.SDK_INT >= FULL_SCREEN_API)
 		{
 			photoView.setOnClickListener(new View.OnClickListener()
 			{
@@ -262,24 +278,6 @@ public class FullImage extends AppCompatActivity
 					}
 				}
 			});
-		}
-		@NonNull
-		final ViewConfiguration viewConfiguration=ViewConfiguration.get(photoView.getContext());
-		touchSlop=viewConfiguration.getScaledTouchSlop();
-		imageShiftThreshold=MainActivity.resources.getDimensionPixelSize(R.dimen.imageShiftThreshold);
-	}
-
-	void loadImage(@Nullable final File path)
-	{
-		if(path!=null)
-		{
-			@NonNull
-			final BitmapWorkerTask task=new BitmapWorkerTask(photoView,String.valueOf(path));
-			task.execute(1);
-		}
-		else
-		{
-			showErrorAlertDialog("The requested picture does not exist");
 		}
 	}
 
@@ -300,7 +298,7 @@ public class FullImage extends AppCompatActivity
 		num=intent.getExtras().getInt("Num");
 		if(url!=null)
 		{
-			loadImage(getImagePath(MainActivity.bytes));
+			showFullImage(getImagePath(MainActivity.imageBytesDir));
 		}
 		else
 		{
@@ -374,30 +372,34 @@ public class FullImage extends AppCompatActivity
 			@Override
 			public void run()
 			{
-				@NonNull
-				final String smallText="Открыта картинка";
-				@NonNull
-				final String bigText="Открыта картинка: \n"+url;
-				@NonNull
-				final NotificationCompat.Builder builder=new NotificationCompat.Builder(FullImage.this,MainActivity.resources.getString(R.string.channel_name));
-				builder.setSmallIcon(R.drawable.ic_notification_icon);
-				builder.setContentTitle(MainActivity.resources.getString(R.string.app_name));
-				builder.setContentText(smallText);
-				builder.setPriority(NotificationCompat.PRIORITY_DEFAULT);
-				builder.setColor(MainActivity.resources.getColor(R.color.colorPrimary));
-				builder.setStyle(new NotificationCompat.BigTextStyle().bigText(bigText));
-				builder.setLargeIcon(getNotificationLargeIcon());
-				builder.setContentIntent(getActionBackPendingIntent());
-				builder.setAutoCancel(false);
-				builder.setShowWhen(false);
-				// builder.addAction(getActionBack());
-				builder.addAction(getActionOpen());
-				builder.addAction(getActionShare());
-				@NonNull
-				final Notification notification=builder.build();
-				createNotificationChannel();
-				notificationManagerCompat=NotificationManagerCompat.from(FullImage.this);
-				notificationManagerCompat.notify(NOTIFY_ID,notification);
+				@Nullable
+				final Resources resources_=resources;
+				if(resources_!=null)
+				{
+					@NonNull
+					final String smallText="Открыта картинка";
+					@NonNull
+					final String bigText="Открыта картинка: \n"+url;
+					@NonNull
+					final NotificationCompat.Builder builder=new NotificationCompat.Builder(FullImage.this,resources_.getString(R.string.channel_name));
+					builder.setSmallIcon(R.drawable.ic_notification_icon);
+					builder.setContentTitle(resources_.getString(R.string.app_name));
+					builder.setContentText(smallText);
+					builder.setPriority(NotificationCompat.PRIORITY_DEFAULT);
+					builder.setColor(resources_.getColor(R.color.colorPrimary));
+					builder.setStyle(new NotificationCompat.BigTextStyle().bigText(bigText));
+					builder.setLargeIcon(getNotificationLargeIcon());
+					builder.setContentIntent(getActionBackPendingIntent());
+					builder.setAutoCancel(false);
+					builder.setShowWhen(false);
+					builder.addAction(getActionOpen());
+					builder.addAction(getActionShare());
+					@NonNull
+					final Notification notification=builder.build();
+					createNotificationChannel();
+					notificationManagerCompat=NotificationManagerCompat.from(FullImage.this);
+					notificationManagerCompat.notify(NOTIFY_ID,notification);
+				}
 			}
 		}.start();
 	}
@@ -433,9 +435,25 @@ public class FullImage extends AppCompatActivity
 		}
 	}
 
+	void showFullImage(@Nullable final File path)
+	{
+		@Nullable
+		final PhotoView photoView_=photoView;
+		if(path!=null&&photoView_!=null)
+		{
+			@NonNull
+			final BitmapWorkerTask task=new BitmapWorkerTask(photoView_,String.valueOf(path));
+			task.execute(1);
+		}
+		else
+		{
+			showErrorAlertDialog("The requested picture does not exist");
+		}
+	}
+
 	void showSystemUI()
 	{
-		if(Build.VERSION.SDK_INT >= FULLSCREENAPI)
+		if(Build.VERSION.SDK_INT >= FULL_SCREEN_API)
 		{
 			@NonNull
 			final View decorView=getWindow().getDecorView();
@@ -474,10 +492,10 @@ public class FullImage extends AppCompatActivity
 				@NonNull
 				int originalBitmapHeight=options.outHeight;
 				int reductionRatio=0;
-				if(originalBitmapWidth>ImageDownloader.MAX_BITMAP_SIZE||originalBitmapHeight>ImageDownloader.MAX_BITMAP_SIZE)
+				if(originalBitmapWidth>ImagesDownloader.MAX_BITMAP_SIZE||originalBitmapHeight>ImagesDownloader.MAX_BITMAP_SIZE)
 				{
 					reductionRatio=1;
-					while(originalBitmapWidth>ImageDownloader.MAX_BITMAP_SIZE||originalBitmapHeight>ImageDownloader.MAX_BITMAP_SIZE)
+					while(originalBitmapWidth>ImagesDownloader.MAX_BITMAP_SIZE||originalBitmapHeight>ImagesDownloader.MAX_BITMAP_SIZE)
 					{
 						reductionRatio<<=1;
 						originalBitmapWidth/=2;
@@ -506,12 +524,14 @@ public class FullImage extends AppCompatActivity
 				try
 				{
 					timer.cancel();
-					photoView.setTag(LOADED_IMAGE_TAG);
-					photoView.setMaximumScale(MAX_ZOOM);
-					photoView.setMediumScale(MEDIUM_ZOOM);
-					photoView.setScaleType(ImageView.ScaleType.FIT_CENTER);
-					photoView.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
-					photoView.setImageBitmap(bitmap);
+					@NonNull
+					final PhotoView photoView_=photoView;
+					photoView_.setTag(LOADED_IMAGE_TAG);
+					photoView_.setMaximumScale(MAX_ZOOM);
+					photoView_.setMediumScale(MEDIUM_ZOOM);
+					photoView_.setScaleType(ImageView.ScaleType.FIT_CENTER);
+					photoView_.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
+					photoView_.setImageBitmap(bitmap);
 				}
 				catch(Exception e)
 				{
@@ -543,12 +563,19 @@ public class FullImage extends AppCompatActivity
 					@Override
 					public void run()
 					{
-						if(!LOADED_IMAGE_TAG.equals(photoView.getTag()))
+						@NonNull
+						final PhotoView photoView_=photoView;
+						if(!LOADED_IMAGE_TAG.equals(photoView_.getTag()))
 						{
-							final int size=MainActivity.resources.getDimensionPixelSize(R.dimen.preloaderSize);
-							photoView.setLayoutParams(new LinearLayout.LayoutParams(size,size));
-							photoView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
-							photoView.setImageResource(R.drawable.progress);
+							@Nullable
+							final Resources resources_=resources;
+							if(resources_!=null)
+							{
+								final int size=resources_.getDimensionPixelSize(R.dimen.preloaderSize);
+								photoView_.setLayoutParams(new LinearLayout.LayoutParams(size,size));
+							}
+							photoView_.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+							photoView_.setImageResource(R.drawable.progress);
 						}
 					}
 				});
