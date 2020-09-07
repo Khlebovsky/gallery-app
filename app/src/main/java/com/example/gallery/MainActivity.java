@@ -1,5 +1,6 @@
 package com.example.gallery;
 
+import android.app.Activity;
 import android.app.Dialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -8,14 +9,11 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.content.res.Resources;
-import android.graphics.Bitmap;
 import android.graphics.Point;
 import android.net.ConnectivityManager;
-import android.net.ConnectivityManager.NetworkCallback;
 import android.net.Network;
 import android.net.NetworkInfo;
 import android.os.*;
-import android.util.LruCache;
 import android.view.Display;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -52,14 +50,14 @@ public class MainActivity extends AppCompatActivity
 	@NonNull
 	public static final HashMap<String,String> URLS_LINKS_STATUS=new HashMap<>();
 	@NonNull
-	public static final HashMap<String,String> ERROR_LIST=new HashMap<>();
+	public static final HashMap<String,String> URLS_ERROR_LIST=new HashMap<>();
 	public static final int ACTION_DELAY_TIME=500;
 	@Nullable
 	public static File cacheDir;
 	@Nullable
 	public static File imagePreviewsDir;
 	@Nullable
-	public static File imageBytesDir;
+	public static File imagesBytesDir;
 	@Nullable
 	public static File textfilesDir;
 	@Nullable
@@ -81,6 +79,10 @@ public class MainActivity extends AppCompatActivity
 	@Nullable
 	static Context context;
 	@Nullable
+	static Activity mainActivity;
+	@Nullable
+	static Context baseContext;
+	@Nullable
 	Parcelable state;
 	@Nullable
 	Bundle bundleGridViewState;
@@ -95,6 +97,8 @@ public class MainActivity extends AppCompatActivity
 	private static NetworkCallback networkCallback;
 	@Nullable
 	private static ConnectivityReceiver connectivityReceiver;
+	@Nullable
+	private static Context mainActivityContext;
 
 	public void changeTheme()
 	{
@@ -110,7 +114,7 @@ public class MainActivity extends AppCompatActivity
 		recreate();
 	}
 
-	void checkUpdates(final boolean showToast)
+	static void checkUpdates(final boolean showToast)
 	{
 		if(isConnected)
 		{
@@ -147,7 +151,7 @@ public class MainActivity extends AppCompatActivity
 					//noinspection rawtypes
 					for(final Map.Entry entry : TEMP.entrySet())
 					{
-						ERROR_LIST.put(entry.getKey().toString(),entry.getValue().toString());
+						URLS_ERROR_LIST.put(entry.getKey().toString(),entry.getValue().toString());
 					}
 				}
 			}
@@ -163,9 +167,11 @@ public class MainActivity extends AppCompatActivity
 		final int numInWidth=(int)(width/imageWidth);
 		final int numInHeight=(int)(height/imageWidth);
 		int quantity=numInWidth*numInHeight;
-		if(resources!=null)
+		@Nullable
+		final Resources resources_=resources;
+		if(resources_!=null)
 		{
-			quantity+=resources.getConfiguration().orientation==Configuration.ORIENTATION_PORTRAIT?numInWidth<<1:numInWidth;
+			quantity+=resources_.getConfiguration().orientation==Configuration.ORIENTATION_PORTRAIT?numInWidth<<1:numInWidth;
 		}
 		else
 		{
@@ -192,7 +198,7 @@ public class MainActivity extends AppCompatActivity
 			@Nullable
 			final File cacheDir_=cacheDir;
 			imagePreviewsDir=new File(cacheDir_,"previews");
-			imageBytesDir=new File(cacheDir_,"bytes");
+			imagesBytesDir=new File(cacheDir_,"bytes");
 			textfilesDir=new File(cacheDir_,"textfiles");
 			linksFile=new File(textfilesDir,"links.txt");
 		}
@@ -249,6 +255,9 @@ public class MainActivity extends AppCompatActivity
 		resources=getResources();
 		setTitle(resources.getString(R.string.app_name));
 		context=getApplicationContext();
+		mainActivity=MainActivity.this;
+		mainActivityContext=MainActivity.this;
+		baseContext=getBaseContext();
 		imageWidth=resources.getDimensionPixelSize(R.dimen.imageWidth);
 		gridView=findViewById(R.id.GridView);
 		connectivityManager=(ConnectivityManager)getSystemService(CONNECTIVITY_SERVICE);
@@ -321,6 +330,14 @@ public class MainActivity extends AppCompatActivity
 			e.printStackTrace();
 		}
 		return true;
+	}
+
+	public static void onAvailableConnection()
+	{
+		isConnected=true;
+		ImagesDownloader.NO_INTERNET_LINKS.clear();
+		ImagesAdapter.callNotifyDataSetChanged();
+		checkUpdates(false);
 	}
 
 	@Override
@@ -415,7 +432,7 @@ public class MainActivity extends AppCompatActivity
 						else
 						{
 							@Nullable
-							final String error=(ERROR_LIST.get(ImagesAdapter.URLS_LIST.get(position)));
+							final String error=(URLS_ERROR_LIST.get(ImagesAdapter.URLS_LIST.get(position)));
 							builder.setTitle("Ошибка");
 							builder.setMessage("Ошибка загрузки: \n"+error);
 							builder.setNegativeButton("Удалить",new AlertDialogOnClickListener(position));
@@ -487,6 +504,11 @@ public class MainActivity extends AppCompatActivity
 		}
 		saveErrorList();
 		saveCurrentTheme();
+	}
+
+	public static void onLostConnection()
+	{
+		isConnected=false;
 	}
 
 	@Override
@@ -591,7 +613,7 @@ public class MainActivity extends AppCompatActivity
 	public static void relaodErrorLinks()
 	{
 		ImagesDownloader.REPEAT_NUM=1;
-		ERROR_LIST.clear();
+		URLS_ERROR_LIST.clear();
 		ImagesAdapter.callNotifyDataSetChanged();
 	}
 
@@ -620,7 +642,7 @@ public class MainActivity extends AppCompatActivity
 			@NonNull
 			final Gson gson=new Gson();
 			@NonNull
-			final String hashMapString=gson.toJson(ERROR_LIST);
+			final String hashMapString=gson.toJson(URLS_ERROR_LIST);
 			@Nullable
 			final SharedPreferences sharedPreferences_=sharedPreferences;
 			if(sharedPreferences_!=null)
@@ -634,14 +656,19 @@ public class MainActivity extends AppCompatActivity
 		}
 	}
 
-	public void showNoInternetAlertDialog()
+	public static void showNoInternetAlertDialog()
 	{
-		@NonNull
-		final AlertDialog.Builder builder=new AlertDialog.Builder(MainActivity.this,R.style.AlertDialogTheme);
-		builder.setTitle("Нет интернета");
-		builder.setMessage("Нет подключения к интернету. Включите WI-FI или сотовую связь и попробуйте снова.");
-		builder.setPositiveButton("ОК",new AlertDialogOnClickListener());
-		builder.show();
+		@Nullable
+		final Context mainActivityContext_=mainActivityContext;
+		if(mainActivityContext_!=null)
+		{
+			@NonNull
+			final AlertDialog.Builder builder=new AlertDialog.Builder(mainActivityContext_,R.style.AlertDialogTheme);
+			builder.setTitle("Нет интернета");
+			builder.setMessage("Нет подключения к интернету. Включите WI-FI или сотовую связь и попробуйте снова.");
+			builder.setPositiveButton("ОК",new AlertDialogOnClickListener());
+			builder.show();
+		}
 	}
 
 	private void unregiesterNetworkStateChecker()
@@ -723,14 +750,14 @@ public class MainActivity extends AppCompatActivity
 					ClientServer.deleteImage(position);
 					break;
 				case DialogInterface.BUTTON_NEUTRAL:
-					ERROR_LIST.remove(ImagesAdapter.URLS_LIST.get(position));
+					URLS_ERROR_LIST.remove(ImagesAdapter.URLS_LIST.get(position));
 					ImagesAdapter.callNotifyDataSetChanged();
 					break;
 			}
 		}
 	}
 
-	private class CheckUpdatesThread extends Thread
+	private static class CheckUpdatesThread extends Thread
 	{
 		final boolean showToast;
 
@@ -753,7 +780,7 @@ public class MainActivity extends AppCompatActivity
 				{
 					boolean isUpdated=false;
 					@NonNull
-					final OkHttpClient client=new OkHttpClient.Builder().sslSocketFactory(ConnectionSettings.getTLSSocketFactory(),ConnectionSettings.getTrustManager()[0]).build();
+					final OkHttpClient client=ConnectionSettings.getOkHttpClient();
 					@NonNull
 					final Call call=client.newCall(new Request.Builder().url(url).get().build());
 					@NonNull
@@ -812,16 +839,21 @@ public class MainActivity extends AppCompatActivity
 							e.printStackTrace();
 						}
 					}
-					if(showToast&&context!=null)
+					@Nullable
+					final Activity mainActivity_=mainActivity;
+					@Nullable
+					final Context context_=baseContext;
+					if(showToast&&context_!=null&&mainActivity_!=null)
 					{
 						@NonNull
 						final String updateResult=isUpdated?"Данные обновлены":"Обновлений не обнаружено";
-						runOnUiThread(new Runnable()
+						//noinspection AnonymousInnerClassMayBeStatic
+						mainActivity_.runOnUiThread(new Runnable()
 						{
 							@Override
 							public void run()
 							{
-								StyleableToast.makeText(context,updateResult,Toast.LENGTH_SHORT,R.style.ToastStyle).show();
+								StyleableToast.makeText(context_,updateResult,Toast.LENGTH_SHORT,R.style.ToastStyle).show();
 							}
 						});
 					}
@@ -837,14 +869,19 @@ public class MainActivity extends AppCompatActivity
 				isError=true;
 				e.printStackTrace();
 			}
-			if(isError&&showToast&&context!=null)
+			@Nullable
+			final Activity mainActivity_=mainActivity;
+			@Nullable
+			final Context context_=context;
+			if(isError&&showToast&&context_!=null&&mainActivity_!=null)
 			{
-				runOnUiThread(new Runnable()
+				//noinspection AnonymousInnerClassMayBeStatic
+				mainActivity_.runOnUiThread(new Runnable()
 				{
 					@Override
 					public void run()
 					{
-						StyleableToast.makeText(context,"Ошибка обновления данных",Toast.LENGTH_SHORT,R.style.ToastStyle).show();
+						StyleableToast.makeText(context_,"Ошибка обновления данных",Toast.LENGTH_SHORT,R.style.ToastStyle).show();
 					}
 				});
 			}
@@ -858,16 +895,14 @@ public class MainActivity extends AppCompatActivity
 		public void onAvailable(@NonNull Network network)
 		{
 			super.onAvailable(network);
-			isConnected=true;
-			ImagesDownloader.NO_INTERNET_LINKS.clear();
-			ImagesAdapter.callNotifyDataSetChanged();
+			onAvailableConnection();
 		}
 
 		@Override
 		public void onLost(@NonNull Network network)
 		{
 			super.onLost(network);
-			isConnected=false;
+			onLostConnection();
 		}
 	}
 }

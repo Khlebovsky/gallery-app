@@ -42,7 +42,7 @@ public final class ClientServer
 				try
 				{
 					@NonNull
-					final OkHttpClient client=new OkHttpClient.Builder().sslSocketFactory(ConnectionSettings.getTLSSocketFactory(),ConnectionSettings.getTrustManager()[0]).build();
+					final OkHttpClient client=ConnectionSettings.getOkHttpClient();
 					@NonNull
 					final RequestBody requestBody=new FormBody.Builder().add("Login",SCRIPT_LOGIN).add("Password",SCRIPT_PASSWORD).add("Task",ADD_TASK).add("Add",url).build();
 					@NonNull
@@ -67,9 +67,8 @@ public final class ClientServer
 			{
 				try
 				{
-					// TODO вынести OkHttpClient в отдельный метод
 					@NonNull
-					final OkHttpClient client=new OkHttpClient.Builder().sslSocketFactory(ConnectionSettings.getTLSSocketFactory(),ConnectionSettings.getTrustManager()[0]).build();
+					final OkHttpClient client=ConnectionSettings.getOkHttpClient();
 					@NonNull
 					final RequestBody requestBody=new FormBody.Builder().add("Login",SCRIPT_LOGIN).add("Password",SCRIPT_PASSWORD).add("Task",DELETE_TASK).add("Delete",String.valueOf(numToDelete))
 						.add("Link",ImagesAdapter.URLS_LIST.get(numToDelete)).build();
@@ -96,9 +95,10 @@ public final class ClientServer
 
 	private static final class AddImageRequestCallback implements Callback
 	{
+		@NonNull
 		private final String url;
 
-		AddImageRequestCallback(@NonNull String url)
+		AddImageRequestCallback(@NonNull final String url)
 		{
 			this.url=url;
 		}
@@ -127,7 +127,7 @@ public final class ClientServer
 	{
 		private final int numToDelete;
 
-		DeleteImageRequestCallback(int numToDelete)
+		DeleteImageRequestCallback(final int numToDelete)
 		{
 			this.numToDelete=numToDelete;
 		}
@@ -170,9 +170,9 @@ public final class ClientServer
 		public void handleMessage(@NonNull Message msg)
 		{
 			super.handleMessage(msg);
-			@NonNull
+			@Nullable
 			final String result=(String)msg.obj;
-			if(context!=null)
+			if(context!=null&&result!=null)
 			{
 				if("error".equals(result))
 				{

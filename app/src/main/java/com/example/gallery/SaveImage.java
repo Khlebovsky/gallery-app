@@ -24,6 +24,7 @@ public class SaveImage extends AppCompatActivity
 	public static ImageView imageView;
 	@Nullable
 	static Context context;
+	@Nullable
 	static String url;
 	@Nullable
 	static SaveImage saveImage;
@@ -45,7 +46,7 @@ public class SaveImage extends AppCompatActivity
 			if(imageUrl!=null)
 			{
 				url=imageUrl;
-				setTitle(url);
+				setTitle(imageUrl);
 				@Nullable
 				final Resources resources_=resources;
 				if(resources_!=null)
@@ -102,7 +103,7 @@ public class SaveImage extends AppCompatActivity
 		});
 		@Nullable
 		final ImageButton applyButton_=applyButton;
-		if(applyButton_!=null)
+		if(applyButton_!=null&&url!=null)
 		{
 			applyButton_.setOnClickListener(new View.OnClickListener()
 			{
@@ -257,7 +258,7 @@ public class SaveImage extends AppCompatActivity
 				String string;
 				while((string=bufferedReader.readLine())!=null)
 				{
-					if(url.equals(string))
+					if(string.equals(url))
 					{
 						isImageInGallery=true;
 					}
@@ -292,7 +293,7 @@ public class SaveImage extends AppCompatActivity
 					showWarningAlertDialog();
 					ImagesDownloader.getImageFromDiskToSaveScreen(url,imageView_,context_);
 				}
-				else
+				else if(url!=null)
 				{
 					ImagesDownloader.downloadImageToSaveScreen(url,imageView_,context_);
 				}

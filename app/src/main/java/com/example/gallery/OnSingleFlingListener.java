@@ -1,6 +1,7 @@
 package com.example.gallery;
 
 import android.view.MotionEvent;
+import androidx.annotation.NonNull;
 
 /**
  * A callback to be invoked when the ImageView is flung with a single
@@ -16,5 +17,5 @@ public interface OnSingleFlingListener
 	 * @param velocityX distance of user's horizontal fling.
 	 * @param velocityY distance of user's vertical fling.
 	 */
-	boolean onFling(MotionEvent e1,MotionEvent e2,float velocityX,float velocityY);
+	boolean onFling(@NonNull final MotionEvent e1,@NonNull final MotionEvent e2,final float velocityX,final float velocityY);
 }

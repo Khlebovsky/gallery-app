@@ -1,6 +1,7 @@
 package com.example.gallery;
 
 import android.view.View;
+import androidx.annotation.Nullable;
 
 public interface OnViewTapListener
 {
@@ -11,5 +12,5 @@ public interface OnViewTapListener
 	 * @param x    - where the user tapped from the left of the View.
 	 * @param y    - where the user tapped from the top of the View.
 	 */
-	void onViewTap(View view,float x,float y);
+	void onViewTap(@Nullable final View view,final float x,final float y);
 }

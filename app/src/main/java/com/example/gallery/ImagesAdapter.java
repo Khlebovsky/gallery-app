@@ -93,7 +93,7 @@ public class ImagesAdapter extends BaseAdapter
 				imageView.setTag(LOADING_ERROR);
 			}
 		}
-		else if(MainActivity.ERROR_LIST.containsKey(url))
+		else if(MainActivity.URLS_ERROR_LIST.containsKey(url))
 		{
 			if(!ERROR.equals(imageView.getTag()))
 			{
@@ -143,9 +143,11 @@ public class ImagesAdapter extends BaseAdapter
 		@Override
 		public void handleMessage(@NonNull Message msg)
 		{
-			if(MainActivity.imagesAdapter!=null)
+			@Nullable
+			final ImagesAdapter imagesAdapter_=MainActivity.imagesAdapter;
+			if(imagesAdapter_!=null)
 			{
-				MainActivity.imagesAdapter.notifyDataSetChanged();
+				imagesAdapter_.notifyDataSetChanged();
 			}
 		}
 	}

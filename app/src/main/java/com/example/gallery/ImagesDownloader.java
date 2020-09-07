@@ -4,8 +4,6 @@ import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.util.Log;
-import android.util.LruCache;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -13,7 +11,6 @@ import java.io.*;
 import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.concurrent.TimeUnit;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import okhttp3.Call;
@@ -33,14 +30,12 @@ public final class ImagesDownloader
 	@Nullable
 	static final File PREVIEWS=MainActivity.imagePreviewsDir;
 	@Nullable
-	static final File BYTES=MainActivity.imageBytesDir;
+	static final File BYTES=MainActivity.imagesBytesDir;
 	static final int ERROR_TIME_SLEEP=1500;
 	static final int CONTROL_NUMBER_OF_BYTES=50000;
 	public static int REPEAT_NUM=3;
 	static int imageWidth;
 	private static int MAX_THREAD_NUM=2;
-	@Nullable
-	private static Resources resources;
 
 	private ImagesDownloader()
 	{
@@ -56,7 +51,7 @@ public final class ImagesDownloader
 				try
 				{
 					@NonNull
-					final OkHttpClient client=new OkHttpClient.Builder().connectTimeout(5,TimeUnit.SECONDS).sslSocketFactory(ConnectionSettings.getTLSSocketFactory(),ConnectionSettings.getTrustManager()[0]).build();
+					final OkHttpClient client=ConnectionSettings.getOkHttpClient();
 					@NonNull
 					final Call call=client.newCall(new Request.Builder().url(url).get().build());
 					@NonNull
@@ -193,7 +188,7 @@ public final class ImagesDownloader
 						}
 						else
 						{
-							MainActivity.ERROR_LIST.put(url,"Decoding error");
+							MainActivity.URLS_ERROR_LIST.put(url,"Decoding error");
 							URLS_FILE_NAMES.put(url,"error");
 						}
 					}
@@ -239,7 +234,7 @@ public final class ImagesDownloader
 						try
 						{
 							@NonNull
-							final OkHttpClient client=new OkHttpClient.Builder().connectTimeout(5,TimeUnit.SECONDS).sslSocketFactory(ConnectionSettings.getTLSSocketFactory(),ConnectionSettings.getTrustManager()[0]).build();
+							final OkHttpClient client=ConnectionSettings.getOkHttpClient();
 							@NonNull
 							final Call call=client.newCall(new Request.Builder().url(url).get().build());
 							@NonNull
@@ -420,7 +415,7 @@ public final class ImagesDownloader
 						}
 						if(i==REPEAT_NUM-1&&status!=null&&exception!=null)
 						{
-							MainActivity.ERROR_LIST.put(url,exception);
+							MainActivity.URLS_ERROR_LIST.put(url,exception);
 							MainActivity.URLS_LINKS_STATUS.put(url,status);
 							URLS_FILE_NAMES.put(url,"error");
 						}
@@ -486,7 +481,7 @@ public final class ImagesDownloader
 					else
 					{
 						@NonNull
-						final File path=new File(MainActivity.imageBytesDir,fileName);
+						final File path=new File(MainActivity.imagesBytesDir,fileName);
 						@NonNull
 						final BitmapFactory.Options options=new BitmapFactory.Options();
 						options.inJustDecodeBounds=true;
@@ -558,13 +553,13 @@ public final class ImagesDownloader
 	{
 		if(context!=null)
 		{
-			resources=context.getResources();
+			@Nullable
+			final Resources resources=context.getResources();
+			if(resources!=null)
+			{
+				imageWidth=resources.getDimensionPixelSize(R.dimen.imageWidth);
+			}
 		}
-		if(resources!=null)
-		{
-			imageWidth=resources.getDimensionPixelSize(R.dimen.imageWidth);
-		}
-		Log.d("123",String.valueOf(imageWidth));
 		try
 		{
 			int cpuThreadsNum=0;

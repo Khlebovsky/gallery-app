@@ -11,13 +11,11 @@ public class ConnectivityReceiver extends BroadcastReceiver
 	{
 		if(MainActivity.isInternet())
 		{
-			MainActivity.isConnected=true;
-			ImagesDownloader.NO_INTERNET_LINKS.clear();
-			ImagesAdapter.callNotifyDataSetChanged();
+			MainActivity.onAvailableConnection();
 		}
 		else
 		{
-			MainActivity.isConnected=false;
+			MainActivity.onLostConnection();
 		}
 	}
 }

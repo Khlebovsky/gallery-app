@@ -6,29 +6,37 @@ import android.view.ScaleGestureDetector;
 import android.view.VelocityTracker;
 import android.view.ViewConfiguration;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 /**
  * Does a whole lot of gesture detecting.
  */
 class CustomGestureDetector
 {
+	@Nullable
 	final OnGestureListener mListener;
 	private static final int INVALID_POINTER_ID=-1;
+	@Nullable
 	private final ScaleGestureDetector mDetector;
-	private final float mTouchSlop;
-	private final float mMinimumVelocity;
+	private float mTouchSlop;
+	private float mMinimumVelocity;
 	private int mActivePointerId=INVALID_POINTER_ID;
 	private int mActivePointerIndex;
+	@Nullable
 	private VelocityTracker mVelocityTracker;
 	private boolean mIsDragging;
 	private float mLastTouchX;
 	private float mLastTouchY;
 
-	CustomGestureDetector(Context context,OnGestureListener listener)
+	CustomGestureDetector(@Nullable final Context context,@Nullable final OnGestureListener listener)
 	{
+		@Nullable
 		final ViewConfiguration configuration=ViewConfiguration.get(context);
-		mMinimumVelocity=configuration.getScaledMinimumFlingVelocity();
-		mTouchSlop=configuration.getScaledTouchSlop();
+		if(configuration!=null)
+		{
+			mMinimumVelocity=configuration.getScaledMinimumFlingVelocity();
+			mTouchSlop=configuration.getScaledTouchSlop();
+		}
 		mListener=listener;
 		@NonNull
 		final ScaleGestureDetector.OnScaleGestureListener mScaleListener=new ScaleGestureDetector.OnScaleGestureListener()
@@ -41,7 +49,7 @@ class CustomGestureDetector
 				{
 					return false;
 				}
-				if(scaleFactor >= 0)
+				if(scaleFactor >= 0&&mListener!=null)
 				{
 					mListener.onScale(scaleFactor,detector.getFocusX(),detector.getFocusY());
 				}
@@ -63,7 +71,7 @@ class CustomGestureDetector
 		mDetector=new ScaleGestureDetector(context,mScaleListener);
 	}
 
-	private float getActiveX(MotionEvent ev)
+	private float getActiveX(@NonNull final MotionEvent ev)
 	{
 		try
 		{
@@ -75,7 +83,7 @@ class CustomGestureDetector
 		}
 	}
 
-	private float getActiveY(MotionEvent ev)
+	private float getActiveY(@NonNull final MotionEvent ev)
 	{
 		try
 		{
@@ -94,14 +102,17 @@ class CustomGestureDetector
 
 	public boolean isScaling()
 	{
-		return mDetector.isInProgress();
+		return mDetector!=null&&mDetector.isInProgress();
 	}
 
-	public boolean onTouchEvent(MotionEvent ev)
+	public boolean onTouchEvent(@NonNull final MotionEvent ev)
 	{
 		try
 		{
-			mDetector.onTouchEvent(ev);
+			if(mDetector!=null)
+			{
+				mDetector.onTouchEvent(ev);
+			}
 			return processTouchEvent(ev);
 		}
 		catch(IllegalArgumentException e)
@@ -112,7 +123,7 @@ class CustomGestureDetector
 	}
 
 	@SuppressWarnings("SameReturnValue")
-	private boolean processTouchEvent(MotionEvent ev)
+	private boolean processTouchEvent(@NonNull final MotionEvent ev)
 	{
 		final int action=ev.getAction();
 		switch(action&MotionEvent.ACTION_MASK)
@@ -141,7 +152,10 @@ class CustomGestureDetector
 				}
 				if(mIsDragging)
 				{
-					mListener.onDrag(dx,dy);
+					if(mListener!=null)
+					{
+						mListener.onDrag(dx,dy);
+					}
 					mLastTouchX=x;
 					mLastTouchY=y;
 					if(null!=mVelocityTracker)
@@ -176,7 +190,10 @@ class CustomGestureDetector
 						// listener
 						if(Math.max(Math.abs(vX),Math.abs(vY)) >= mMinimumVelocity)
 						{
-							mListener.onFling(mLastTouchX,mLastTouchY,-vX,-vY);
+							if(mListener!=null)
+							{
+								mListener.onFling(mLastTouchX,mLastTouchY,-vX,-vY);
+							}
 						}
 					}
 				}

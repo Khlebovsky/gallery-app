@@ -13,11 +13,19 @@ import java.security.cert.X509Certificate;
 import javax.net.ssl.*;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import okhttp3.OkHttpClient;
 
 public final class ConnectionSettings
 {
 	private ConnectionSettings()
 	{
+	}
+
+	public static OkHttpClient getOkHttpClient() throws NoSuchAlgorithmException, KeyStoreException, KeyManagementException
+	{
+		@NonNull
+		final OkHttpClient client=new OkHttpClient.Builder().sslSocketFactory(getTLSSocketFactory(),getTrustManager()[0]).build();
+		return client;
 	}
 
 	public static SSLSocketFactory getTLSSocketFactory() throws NoSuchAlgorithmException, KeyManagementException, KeyStoreException
@@ -68,18 +76,22 @@ public final class ConnectionSettings
 		@Override
 		public void checkClientTrusted(X509Certificate[] x509Certificates,String s) throws CertificateException
 		{
-			if(x509TrustManager!=null)
+			@Nullable
+			final X509TrustManager x509TrustManager_=x509TrustManager;
+			if(x509TrustManager_!=null)
 			{
-				x509TrustManager.checkServerTrusted(x509Certificates,s);
+				x509TrustManager_.checkServerTrusted(x509Certificates,s);
 			}
 		}
 
 		@Override
 		public void checkServerTrusted(X509Certificate[] x509Certificates,String s) throws CertificateException
 		{
-			if(x509TrustManager!=null)
+			@Nullable
+			final X509TrustManager x509TrustManager_=x509TrustManager;
+			if(x509TrustManager_!=null)
 			{
-				x509TrustManager.checkServerTrusted(x509Certificates,s);
+				x509TrustManager_.checkServerTrusted(x509Certificates,s);
 			}
 		}
 

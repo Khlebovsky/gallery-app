@@ -11,5 +11,5 @@ public interface OnViewDragListener
 	 * @param dx The change of the coordinates in the x-direction
 	 * @param dy The change of the coordinates in the y-direction
 	 */
-	void onDrag(float dx,float dy);
+	void onDrag(final float dx,final float dy);
 }

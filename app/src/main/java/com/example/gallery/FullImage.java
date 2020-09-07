@@ -135,10 +135,12 @@ public class FullImage extends AppCompatActivity
 
 	static File getImagePath(@Nullable final File dir)
 	{
-		if(dir!=null&&url!=null)
+		@Nullable
+		final String url_=url;
+		if(dir!=null&&url_!=null)
 		{
 			@NonNull
-			final String fileName=ImagesDownloader.urlToHashMD5(url);
+			final String fileName=ImagesDownloader.urlToHashMD5(url_);
 			@NonNull
 			final File path=new File(dir,fileName);
 			return path;
@@ -298,7 +300,7 @@ public class FullImage extends AppCompatActivity
 		num=intent.getExtras().getInt("Num");
 		if(url!=null)
 		{
-			showFullImage(getImagePath(MainActivity.imageBytesDir));
+			showFullImage(getImagePath(MainActivity.imagesBytesDir));
 		}
 		else
 		{

@@ -2,10 +2,10 @@ package com.example.gallery;
 
 interface OnGestureListener
 {
-	void onDrag(float dx,float dy);
+	void onDrag(final float dx,final float dy);
 
 	@SuppressWarnings({"unused","RedundantSuppression"})
-	void onFling(float startX,float startY,float velocityX,float velocityY);
+	void onFling(final float startX,final float startY,final float velocityX,final float velocityY);
 
-	void onScale(float scaleFactor,float focusX,float focusY);
+	void onScale(final float scaleFactor,final float focusX,final float focusY);
 }

@@ -2,6 +2,7 @@ package com.example.gallery;
 
 import android.view.MotionEvent;
 import android.widget.ImageView;
+import androidx.annotation.Nullable;
 
 final class Util
 {
@@ -9,7 +10,7 @@ final class Util
 	{
 	}
 
-	static void checkZoomLevels(float minZoom,float midZoom,float maxZoom)
+	static void checkZoomLevels(final float minZoom,final float midZoom,final float maxZoom)
 	{
 		if(minZoom >= midZoom)
 		{
@@ -21,17 +22,17 @@ final class Util
 		}
 	}
 
-	static int getPointerIndex(int action)
+	static int getPointerIndex(final int action)
 	{
 		return (action&MotionEvent.ACTION_POINTER_INDEX_MASK) >> MotionEvent.ACTION_POINTER_INDEX_SHIFT;
 	}
 
-	static boolean hasDrawable(ImageView imageView)
+	static boolean hasDrawable(@Nullable final ImageView imageView)
 	{
-		return imageView.getDrawable()!=null;
+		return (imageView!=null?imageView.getDrawable():null)!=null;
 	}
 
-	static boolean isSupportedScaleType(final ImageView.ScaleType scaleType)
+	static boolean isSupportedScaleType(@Nullable final ImageView.ScaleType scaleType)
 	{
 		if(scaleType==null)
 		{

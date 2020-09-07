@@ -21,8 +21,6 @@ public class ImageCustomView extends LinearLayout
 	static int touchSlop;
 	static boolean isTouch;
 	static int imageShiftThreshold;
-	@Nullable
-	private static Resources resources;
 
 	public ImageCustomView(Context context,@Nullable AttributeSet attrs)
 	{
@@ -36,10 +34,6 @@ public class ImageCustomView extends LinearLayout
 
 	public static void initStatic(@Nullable final Context context)
 	{
-		if(context!=null)
-		{
-			resources=context.getResources();
-		}
 		@Nullable
 		final PhotoView photoView_=photoView;
 		if(photoView_!=null)
@@ -48,11 +42,14 @@ public class ImageCustomView extends LinearLayout
 			final ViewConfiguration viewConfiguration=ViewConfiguration.get(photoView_.getContext());
 			touchSlop=viewConfiguration.getScaledTouchSlop();
 		}
-		@Nullable
-		final Resources resources_=resources;
-		if(resources_!=null)
+		if(context!=null)
 		{
-			imageShiftThreshold=resources_.getDimensionPixelSize(R.dimen.imageShiftThreshold);
+			@Nullable
+			final Resources resources=context.getResources();
+			if(resources!=null)
+			{
+				imageShiftThreshold=resources.getDimensionPixelSize(R.dimen.imageShiftThreshold);
+			}
 		}
 	}
 

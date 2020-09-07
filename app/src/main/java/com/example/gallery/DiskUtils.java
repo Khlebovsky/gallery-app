@@ -17,14 +17,16 @@ public final class DiskUtils
 
 	public static void addStringToLinksfile(@NonNull final String url)
 	{
-		if(MainActivity.linksFile!=null)
+		@Nullable
+		final File linksFile_=MainActivity.linksFile;
+		if(linksFile_!=null)
 		{
 			@NonNull
 			final ArrayList<String> LinksFileString=new ArrayList<>();
 			try
 			{
 				@NonNull
-				final BufferedReader bufferedReader=new BufferedReader(new FileReader(MainActivity.linksFile));
+				final BufferedReader bufferedReader=new BufferedReader(new FileReader(linksFile_));
 				String string;
 				while((string=bufferedReader.readLine())!=null)
 				{
@@ -33,7 +35,7 @@ public final class DiskUtils
 				LinksFileString.add(url);
 				bufferedReader.close();
 				@NonNull
-				final BufferedWriter bufferedWriter=new BufferedWriter(new FileWriter(MainActivity.linksFile));
+				final BufferedWriter bufferedWriter=new BufferedWriter(new FileWriter(linksFile_));
 				for(final String str : LinksFileString)
 				{
 					bufferedWriter.write(str+'\n');
@@ -47,49 +49,6 @@ public final class DiskUtils
 			}
 			ImagesAdapter.callNotifyDataSetChanged();
 		}
-	}
-
-	static void optimizeDisk()
-	{
-		new Thread()
-		{
-			@Override
-			public void run()
-			{
-				try
-				{
-					@NonNull
-					final ArrayList<String> diskFiles=new ArrayList<>();
-					for(final String string : ImagesAdapter.URLS_LIST)
-					{
-						diskFiles.add(ImagesDownloader.urlToHashMD5(string));
-					}
-					if(MainActivity.imageBytesDir!=null&&MainActivity.imageBytesDir.exists())
-					{
-						@NonNull
-						final String parentDir=MainActivity.imageBytesDir+"/";
-						@Nullable
-						final File[] files=MainActivity.imageBytesDir.listFiles();
-						if(files!=null&&files.length!=0)
-						{
-							for(final File file : files)
-							{
-								@NonNull
-								final String fileName=file.toString().substring(parentDir.length());
-								if(!diskFiles.contains(fileName))
-								{
-									deleteImageFromDisk(fileName);
-								}
-							}
-						}
-					}
-				}
-				catch(Exception e)
-				{
-					e.printStackTrace();
-				}
-			}
-		}.start();
 	}
 
 	static void deleteImageFromDisk(@Nullable final String fileName)
@@ -113,7 +72,7 @@ public final class DiskUtils
 				if(num>1)
 				{
 					@NonNull
-					final File fullImage=new File(MainActivity.imageBytesDir,fileName);
+					final File fullImage=new File(MainActivity.imagesBytesDir,fileName);
 					if(fullImage.exists())
 					{
 						//noinspection ResultOfMethodCallIgnored
@@ -155,7 +114,7 @@ public final class DiskUtils
 				imagePreviewsDir.mkdirs();
 			}
 			@Nullable
-			final File imageBytesDir=MainActivity.imageBytesDir;
+			final File imageBytesDir=MainActivity.imagesBytesDir;
 			if(imageBytesDir!=null&&!imageBytesDir.exists())
 			{
 				//noinspection ResultOfMethodCallIgnored
@@ -169,8 +128,8 @@ public final class DiskUtils
 		try
 		{
 			@Nullable
-			final File linksFile=MainActivity.linksFile;
-			if(linksFile!=null&&!linksFile.exists())
+			final File linksFile_=MainActivity.linksFile;
+			if(linksFile_!=null&&!linksFile_.exists())
 			{
 				@NonNull
 				final File textfilesdir=new File(cacheDir,"textfiles");
@@ -179,12 +138,10 @@ public final class DiskUtils
 					//noinspection ResultOfMethodCallIgnored
 					textfilesdir.mkdirs();
 				}
-				@NonNull
-				final File linksfile=new File(textfilesdir,"links.txt");
-				if(!linksfile.exists())
+				if(!linksFile_.exists())
 				{
 					//noinspection ResultOfMethodCallIgnored
-					linksfile.createNewFile();
+					linksFile_.createNewFile();
 				}
 			}
 		}
@@ -194,16 +151,63 @@ public final class DiskUtils
 		}
 	}
 
+	static void optimizeDisk()
+	{
+		new Thread()
+		{
+			@Override
+			public void run()
+			{
+				try
+				{
+					@NonNull
+					final ArrayList<String> diskFiles=new ArrayList<>();
+					for(final String string : ImagesAdapter.URLS_LIST)
+					{
+						diskFiles.add(ImagesDownloader.urlToHashMD5(string));
+					}
+					@Nullable
+					final File imagesBytesDir_=MainActivity.imagesBytesDir;
+					if(imagesBytesDir_!=null&&imagesBytesDir_.exists())
+					{
+						@NonNull
+						final String parentDir=imagesBytesDir_+"/";
+						@Nullable
+						final File[] files=imagesBytesDir_.listFiles();
+						if(files!=null&&files.length!=0)
+						{
+							for(final File file : files)
+							{
+								@NonNull
+								final String fileName=file.toString().substring(parentDir.length());
+								if(!diskFiles.contains(fileName))
+								{
+									deleteImageFromDisk(fileName);
+								}
+							}
+						}
+					}
+				}
+				catch(Exception e)
+				{
+					e.printStackTrace();
+				}
+			}
+		}.start();
+	}
+
 	public static void removeStringFromLinksfile(int numToDelete)
 	{
-		if(MainActivity.linksFile!=null)
+		@Nullable
+		final File linksFile_=MainActivity.linksFile;
+		if(linksFile_!=null)
 		{
 			@NonNull
 			final ArrayList<String> LinksFileString=new ArrayList<>();
 			try
 			{
 				@NonNull
-				final BufferedReader bufferedReader=new BufferedReader(new FileReader(MainActivity.linksFile));
+				final BufferedReader bufferedReader=new BufferedReader(new FileReader(linksFile_));
 				String string;
 				while((string=bufferedReader.readLine())!=null)
 				{
@@ -214,7 +218,7 @@ public final class DiskUtils
 				}
 				bufferedReader.close();
 				@NonNull
-				final BufferedWriter bufferedWriter=new BufferedWriter(new FileWriter(MainActivity.linksFile));
+				final BufferedWriter bufferedWriter=new BufferedWriter(new FileWriter(linksFile_));
 				for(final String str : LinksFileString)
 				{
 					bufferedWriter.write(str+'\n');
