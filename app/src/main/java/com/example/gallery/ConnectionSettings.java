@@ -1,6 +1,8 @@
 package com.example.gallery;
 
+import android.content.Context;
 import android.os.Build;
+import com.google.android.gms.security.ProviderInstaller;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.Socket;
@@ -17,6 +19,12 @@ import okhttp3.OkHttpClient;
 
 public final class ConnectionSettings
 {
+	private static final int GOOGLE_SERVICES_API=19;
+	@NonNull
+	private static final String TLS_VERSION_1_1="TLSv1.1";
+	@NonNull
+	private static final String TLS_VERSION_1_2="TLSv1.2";
+
 	private ConnectionSettings()
 	{
 	}
@@ -47,6 +55,21 @@ public final class ConnectionSettings
 			new MyTrustedManager()
 		};
 		return myTrustManager;
+	}
+
+	public static void initGooglePlayServices(@NonNull final Context context)
+	{
+		if(Build.VERSION.SDK_INT<=GOOGLE_SERVICES_API)
+		{
+			try
+			{
+				ProviderInstaller.installIfNeeded(context);
+			}
+			catch(Exception e)
+			{
+				e.printStackTrace();
+			}
+		}
 	}
 
 	public static class MyTrustedManager implements X509TrustManager
@@ -146,7 +169,7 @@ public final class ConnectionSettings
 		{
 			if((socket instanceof SSLSocket)&&isTLSServerEnabled((SSLSocket)socket))
 			{
-				((SSLSocket)socket).setEnabledProtocols(new String[]{"TLSv1.1","TLSv1.2"});
+				((SSLSocket)socket).setEnabledProtocols(new String[]{TLS_VERSION_1_1,TLS_VERSION_1_2});
 			}
 			return socket;
 		}
@@ -167,7 +190,7 @@ public final class ConnectionSettings
 		{
 			for(final String protocol : sslSocket.getSupportedProtocols())
 			{
-				if("TLSv1.1".equals(protocol)||"TLSv1.2".equals(protocol))
+				if(TLS_VERSION_1_1.equals(protocol)||TLS_VERSION_1_2.equals(protocol))
 				{
 					return true;
 				}

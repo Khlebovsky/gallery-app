@@ -7,10 +7,13 @@ import android.graphics.BitmapFactory;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.Toast;
+import com.muddzdev.styleabletoast.StyleableToast;
 import java.io.*;
+import java.lang.ref.WeakReference;
+import java.net.URL;
 import java.security.MessageDigest;
 import java.util.ArrayList;
-import java.util.HashMap;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import okhttp3.Call;
@@ -21,21 +24,17 @@ import okhttp3.Response;
 public final class ImagesDownloader
 {
 	@NonNull
-	public static final HashMap<String,String> URLS_FILE_NAMES=new HashMap<>();
-	@NonNull
-	public static final ArrayList<String> NO_INTERNET_LINKS=new ArrayList<>();
-	public static final int MAX_BITMAP_SIZE=4096;
-	@NonNull
 	static final ArrayList<String> URLS_IN_PROGRESS=new ArrayList<>();
 	@Nullable
-	static final File PREVIEWS=MainActivity.imagePreviewsDir;
+	static final File PREVIEWS=Application.imagePreviewsDir;
 	@Nullable
-	static final File BYTES=MainActivity.imagesBytesDir;
-	static final int ERROR_TIME_SLEEP=1500;
-	static final int CONTROL_NUMBER_OF_BYTES=50000;
-	public static int REPEAT_NUM=3;
+	static final File BYTES=Application.imagesBytesDir;
 	static int imageWidth;
-	private static int MAX_THREAD_NUM=2;
+	private static final int CONTROL_NUMBER_OF_BYTES=50000;
+	@NonNull
+	private static final String IMAGES_URL="https://khlebovsky.ru/images.txt";
+	private static final int ERROR_TIME_SLEEP=1500;
+	private static int maxThreadNum=2;
 
 	private ImagesDownloader()
 	{
@@ -84,26 +83,16 @@ public final class ImagesDownloader
 							options.inJustDecodeBounds=true;
 							BitmapFactory.decodeByteArray(byteArrayOutputStream.toByteArray(),0,byteArrayOutputStream.toByteArray().length,options);
 							@NonNull
-							int originalBitmapWidth=options.outWidth;
+							final int originalBitmapWidth=options.outWidth;
 							@NonNull
-							int originalBitmapHeight=options.outHeight;
+							final int originalBitmapHeight=options.outHeight;
 							if(originalBitmapWidth==-1)
 							{
-								SaveImage.showSaveImageAlertDialog("The file is not a picture");
+								SaveImageActivity.showSaveImageAlertDialog("The file is not a picture");
 							}
 							else
 							{
-								int reductionRatio=0;
-								if(originalBitmapWidth>MAX_BITMAP_SIZE||originalBitmapHeight>MAX_BITMAP_SIZE)
-								{
-									reductionRatio=1;
-									while(originalBitmapWidth>MAX_BITMAP_SIZE||originalBitmapHeight>MAX_BITMAP_SIZE)
-									{
-										reductionRatio<<=1;
-										originalBitmapWidth/=2;
-										originalBitmapHeight/=2;
-									}
-								}
+								final int reductionRatio=getReductionRadio(originalBitmapWidth,originalBitmapHeight);
 								@NonNull
 								final BitmapFactory.Options bitmapOptions=new BitmapFactory.Options();
 								bitmapOptions.inSampleSize=reductionRatio;
@@ -112,7 +101,7 @@ public final class ImagesDownloader
 								if(originalBitmap!=null)
 								{
 									//noinspection AnonymousInnerClassMayBeStatic
-									((SaveImage)context).runOnUiThread(new Runnable()
+									((SaveImageActivity)context).runOnUiThread(new Runnable()
 									{
 										@Override
 										public void run()
@@ -125,20 +114,20 @@ public final class ImagesDownloader
 											}
 											catch(Exception e)
 											{
-												SaveImage.showSaveImageAlertDialog("Decoding error");
+												SaveImageActivity.showSaveImageAlertDialog("Decoding error");
 											}
 										}
 									});
 								}
 								else
 								{
-									SaveImage.showSaveImageAlertDialog("Decoding error");
+									SaveImageActivity.showSaveImageAlertDialog("Decoding error");
 								}
 							}
 						}
 						catch(Exception e)
 						{
-							SaveImage.showSaveImageAlertDialog("Connection error");
+							SaveImageActivity.showSaveImageAlertDialog("Connection error");
 							e.printStackTrace();
 						}
 						finally
@@ -151,13 +140,13 @@ public final class ImagesDownloader
 					}
 					else
 					{
-						SaveImage.showSaveImageAlertDialog("Response code: "+response.code());
+						SaveImageActivity.showSaveImageAlertDialog("Response code: "+response.code());
 					}
 				}
 				catch(Exception e)
 				{
 					e.printStackTrace();
-					SaveImage.showSaveImageAlertDialog("Unknown error");
+					SaveImageActivity.showSaveImageAlertDialog("Unknown error");
 				}
 			}
 		}.start();
@@ -184,12 +173,12 @@ public final class ImagesDownloader
 						if(bitmap!=null)
 						{
 							LruMemoryCache.addBitmapToMemoryCache(url,bitmap);
-							URLS_FILE_NAMES.put(url,urlHashMD5);
+							Application.URLS_FILE_NAMES.put(url,urlHashMD5);
 						}
 						else
 						{
-							MainActivity.URLS_ERROR_LIST.put(url,"Decoding error");
-							URLS_FILE_NAMES.put(url,"error");
+							Application.URLS_ERROR_LIST.put(url,"Decoding error");
+							Application.URLS_FILE_NAMES.put(url,"error");
 						}
 					}
 					catch(Exception e)
@@ -224,11 +213,11 @@ public final class ImagesDownloader
 						//noinspection ResultOfMethodCallIgnored
 						BYTES.mkdirs();
 					}
-					for(int i=0;i<REPEAT_NUM;i++)
+					for(int i=0;i<Application.DOWNLOADING_REPEAT_NUM;i++)
 					{
-						if(!MainActivity.isConnected)
+						if(!Application.isInternetAvaliable)
 						{
-							NO_INTERNET_LINKS.add(url);
+							Application.NO_INTERNET_LINKS.add(url);
 							break;
 						}
 						try
@@ -245,7 +234,7 @@ public final class ImagesDownloader
 							InputStream inputStream=null;
 							if(response.code()==200||response.code()==201)
 							{
-								NO_INTERNET_LINKS.remove(url);
+								Application.NO_INTERNET_LINKS.remove(url);
 								@NonNull
 								boolean isImage=true;
 								try
@@ -337,7 +326,7 @@ public final class ImagesDownloader
 												if(preview!=null)
 												{
 													LruMemoryCache.addBitmapToMemoryCache(url,preview);
-													URLS_FILE_NAMES.put(url,urlHashMD5);
+													Application.URLS_FILE_NAMES.put(url,urlHashMD5);
 													@NonNull
 													final File previewName=new File(PREVIEWS,urlHashMD5);
 													try
@@ -395,9 +384,9 @@ public final class ImagesDownloader
 							exception=String.valueOf(e);
 							e.printStackTrace();
 						}
-						if(!MainActivity.isConnected)
+						if(!Application.isInternetAvaliable)
 						{
-							NO_INTERNET_LINKS.add(url);
+							Application.NO_INTERNET_LINKS.add(url);
 							break;
 						}
 						try
@@ -408,16 +397,16 @@ public final class ImagesDownloader
 						{
 							e.printStackTrace();
 						}
-						if(!MainActivity.isConnected)
+						if(!Application.isInternetAvaliable)
 						{
-							NO_INTERNET_LINKS.add(url);
+							Application.NO_INTERNET_LINKS.add(url);
 							break;
 						}
-						if(i==REPEAT_NUM-1&&status!=null&&exception!=null)
+						if(i==Application.DOWNLOADING_REPEAT_NUM-1&&status!=null&&exception!=null)
 						{
-							MainActivity.URLS_ERROR_LIST.put(url,exception);
-							MainActivity.URLS_LINKS_STATUS.put(url,status);
-							URLS_FILE_NAMES.put(url,"error");
+							Application.URLS_ERROR_LIST.put(url,exception);
+							Application.URLS_LINKS_STATUS.put(url,status);
+							Application.URLS_FILE_NAMES.put(url,"error");
 						}
 					}
 					URLS_IN_PROGRESS.remove(url);
@@ -436,9 +425,9 @@ public final class ImagesDownloader
 		{
 			return bitmap;
 		}
-		if(ThreadsCounter.getThreadCount()<MAX_THREAD_NUM)
+		if(ThreadsCounter.getThreadCount()<maxThreadNum)
 		{
-			if(URLS_FILE_NAMES.containsKey(url)&&URLS_IN_PROGRESS.contains(url))
+			if(Application.URLS_FILE_NAMES.containsKey(url)&&URLS_IN_PROGRESS.contains(url))
 			{
 				URLS_IN_PROGRESS.remove(url);
 				if(LruMemoryCache.memoryCache!=null)
@@ -476,37 +465,27 @@ public final class ImagesDownloader
 					final String fileName=urlToHashMD5(url);
 					if(url.isEmpty())
 					{
-						SaveImage.showSaveImageAlertDialog("The picture does not exist");
+						SaveImageActivity.showSaveImageAlertDialog("The picture does not exist");
 					}
 					else
 					{
 						@NonNull
-						final File path=new File(MainActivity.imagesBytesDir,fileName);
+						final File path=new File(Application.imagesBytesDir,fileName);
 						@NonNull
 						final BitmapFactory.Options options=new BitmapFactory.Options();
 						options.inJustDecodeBounds=true;
 						BitmapFactory.decodeFile(String.valueOf(path),options);
 						@NonNull
-						int originalBitmapWidth=options.outWidth;
+						final int originalBitmapWidth=options.outWidth;
 						@NonNull
-						int originalBitmapHeight=options.outHeight;
+						final int originalBitmapHeight=options.outHeight;
 						if(originalBitmapWidth==-1)
 						{
-							SaveImage.showSaveImageAlertDialog("The file is not a picture");
+							SaveImageActivity.showSaveImageAlertDialog("The file is not a picture");
 						}
 						else
 						{
-							int reductionRatio=0;
-							if(originalBitmapWidth>MAX_BITMAP_SIZE||originalBitmapHeight>MAX_BITMAP_SIZE)
-							{
-								reductionRatio=1;
-								while(originalBitmapWidth>MAX_BITMAP_SIZE||originalBitmapHeight>MAX_BITMAP_SIZE)
-								{
-									reductionRatio<<=1;
-									originalBitmapWidth/=2;
-									originalBitmapHeight/=2;
-								}
-							}
+							final int reductionRatio=getReductionRadio(originalBitmapWidth,originalBitmapHeight);
 							@NonNull
 							final BitmapFactory.Options bitmapOptions=new BitmapFactory.Options();
 							bitmapOptions.inSampleSize=reductionRatio;
@@ -515,7 +494,7 @@ public final class ImagesDownloader
 							if(originalBitmap!=null)
 							{
 								//noinspection AnonymousInnerClassMayBeStatic
-								((SaveImage)context).runOnUiThread(new Runnable()
+								((SaveImageActivity)context).runOnUiThread(new Runnable()
 								{
 									@Override
 									public void run()
@@ -528,14 +507,14 @@ public final class ImagesDownloader
 										}
 										catch(Exception e)
 										{
-											SaveImage.showSaveImageAlertDialog("Decoding error");
+											SaveImageActivity.showSaveImageAlertDialog("Decoding error");
 										}
 									}
 								});
 							}
 							else
 							{
-								SaveImage.showSaveImageAlertDialog("Decoding error");
+								SaveImageActivity.showSaveImageAlertDialog("Decoding error");
 							}
 						}
 					}
@@ -543,30 +522,47 @@ public final class ImagesDownloader
 				catch(Exception e)
 				{
 					e.printStackTrace();
-					SaveImage.showSaveImageAlertDialog("Unknown error");
+					SaveImageActivity.showSaveImageAlertDialog("Unknown error");
 				}
 			}
 		}.start();
 	}
 
-	public static void initStatic(@Nullable final Context context)
+	public static int getReductionRadio(int originalBitmapWidth,int originalBitmapHeight)
 	{
-		if(context!=null)
+		int reductionRatio=0;
+		if(originalBitmapWidth>Application.MAX_BITMAP_SIZE||originalBitmapHeight>Application.MAX_BITMAP_SIZE)
 		{
-			@Nullable
-			final Resources resources=context.getResources();
-			if(resources!=null)
+			reductionRatio=1;
+			while(originalBitmapWidth>Application.MAX_BITMAP_SIZE||originalBitmapHeight>Application.MAX_BITMAP_SIZE)
 			{
-				imageWidth=resources.getDimensionPixelSize(R.dimen.imageWidth);
+				reductionRatio<<=1;
+				originalBitmapWidth/=2;
+				originalBitmapHeight/=2;
 			}
 		}
+		return reductionRatio;
+	}
+
+	public static void init()
+	{
+		@Nullable
+		final WeakReference<MainActivity> mainActivityWeakReference=Application.mainActivity;
+		if(mainActivityWeakReference!=null)
+		{
+			@Nullable
+			final Resources resources=mainActivityWeakReference.get().getResources();
+			if(resources!=null)
+			{
+				imageWidth=resources.getDimensionPixelSize(R.dimen.imageHeight);
+			}
+		}
+		// TODO проверка на подсчёт
 		try
 		{
 			int cpuThreadsNum=0;
 			@NonNull
-			final String systemPath="/sys/devices/system/cpu/";
-			@NonNull
-			final File systemDir=new File(systemPath);
+			final File systemDir=new File("/sys/devices/system/cpu/");
 			@Nullable
 			final File[] files=systemDir.listFiles();
 			if(files!=null&&files.length!=0)
@@ -574,14 +570,14 @@ public final class ImagesDownloader
 				for(final File file : files)
 				{
 					@NonNull
-					final String dir=file.toString().substring(systemPath.length());
+					final String dir=file.getName();
 					if(dir.matches("cpu"+"[0-9]"))
 					{
 						cpuThreadsNum++;
 					}
 				}
 			}
-			MAX_THREAD_NUM=cpuThreadsNum>2?4:2;
+			maxThreadNum=cpuThreadsNum>2?4:2;
 		}
 		catch(Exception e)
 		{
@@ -611,6 +607,143 @@ public final class ImagesDownloader
 			e.printStackTrace();
 		}
 		return "";
+	}
+
+	static class CheckUpdatesThread extends Thread
+	{
+		final boolean showToast;
+
+		CheckUpdatesThread(final boolean showToast)
+		{
+			this.showToast=showToast;
+		}
+
+		@Override
+		public void run()
+		{
+			boolean isError=false;
+			try
+			{
+				@NonNull
+				final URL url=new URL(IMAGES_URL);
+				@NonNull
+				final ArrayList<String> serverURLS=new ArrayList<>();
+				try
+				{
+					boolean isUpdated=false;
+					@NonNull
+					final OkHttpClient client=ConnectionSettings.getOkHttpClient();
+					@NonNull
+					final Call call=client.newCall(new Request.Builder().url(url).get().build());
+					@NonNull
+					final Response response=call.execute();
+					@NonNull
+					final BufferedReader bufferedReader=new BufferedReader(response.body()!=null?response.body().charStream():null);
+					@Nullable
+					String line;
+					while((line=bufferedReader.readLine())!=null)
+					{
+						serverURLS.add(line);
+					}
+					if(!serverURLS.equals(Application.URLS_LIST))
+					{
+						isUpdated=true;
+					}
+					if(!serverURLS.equals(Application.URLS_LIST))
+					{
+						@NonNull
+						final ArrayList<String> urlsToDelete=new ArrayList<>();
+						for(final String string : Application.URLS_LIST)
+						{
+							if(!serverURLS.contains(string))
+							{
+								urlsToDelete.add(string);
+							}
+						}
+						Application.URLS_LIST.clear();
+						for(final String string : serverURLS)
+						{
+							Application.URLS_LIST.add(string);
+						}
+						ImagesAdapter.callNotifyDataSetChanged();
+						if(!urlsToDelete.isEmpty())
+						{
+							for(final String urlToDelete : urlsToDelete)
+							{
+								@Nullable
+								final String fileName=Application.URLS_FILE_NAMES.get(urlToDelete);
+								DiskUtils.deleteImageFromDisk(fileName);
+							}
+						}
+						try
+						{
+							@NonNull
+							final FileWriter fileWriter=new FileWriter(Application.linksFile);
+							for(final String string : serverURLS)
+							{
+								fileWriter.write(string+'\n');
+							}
+							fileWriter.flush();
+							fileWriter.close();
+						}
+						catch(Exception e)
+						{
+							e.printStackTrace();
+						}
+					}
+					@Nullable
+					final WeakReference<MainActivity> weakReference=Application.mainActivity;
+					if(showToast&&weakReference!=null)
+					{
+						@Nullable
+						final MainActivity mainActivity=weakReference.get();
+						if(mainActivity!=null)
+						{
+							@NonNull
+							final String updateResult=isUpdated?"Данные обновлены":"Обновлений не обнаружено";
+							//noinspection AnonymousInnerClassMayBeStatic
+							mainActivity.runOnUiThread(new Runnable()
+							{
+								@Override
+								public void run()
+								{
+									StyleableToast.makeText(mainActivity,updateResult,Toast.LENGTH_SHORT,R.style.ToastStyle).show();
+								}
+							});
+						}
+					}
+				}
+				catch(Exception e)
+				{
+					isError=true;
+					e.printStackTrace();
+				}
+			}
+			catch(Exception e)
+			{
+				isError=true;
+				e.printStackTrace();
+			}
+			@Nullable
+			final WeakReference<MainActivity> weakReference=Application.mainActivity;
+			if(isError&&showToast&&weakReference!=null)
+			{
+				@Nullable
+				final MainActivity mainActivity=weakReference.get();
+				if(mainActivity!=null)
+				{
+					//noinspection AnonymousInnerClassMayBeStatic
+					mainActivity.runOnUiThread(new Runnable()
+					{
+						@Override
+						public void run()
+						{
+							StyleableToast.makeText(mainActivity,"Ошибка обновления данных",Toast.LENGTH_SHORT,R.style.ToastStyle).show();
+						}
+					});
+				}
+			}
+		}
 	}
 
 	public static final class ThreadsCounter

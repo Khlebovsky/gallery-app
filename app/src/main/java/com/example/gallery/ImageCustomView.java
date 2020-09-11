@@ -3,24 +3,22 @@ package com.example.gallery;
 import android.content.Context;
 import android.content.res.Resources;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.MotionEvent;
 import android.view.ViewConfiguration;
 import android.widget.LinearLayout;
+import java.lang.ref.WeakReference;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import static com.example.gallery.FullImage.photoView;
-
 public class ImageCustomView extends LinearLayout
 {
-	public static final float MAX_DRAG_ZOOM=1.1f;
-	public static final float MIN_DRAG_ZOOM=1;
-	static float offsetDY;
-	static float downLength;
-	static int touchSlop;
-	static boolean isTouch;
-	static int imageShiftThreshold;
+	private static final float MAX_DRAG_ZOOM=1.1f;
+	private static final float MIN_DRAG_ZOOM=1;
+	private static float offsetDY;
+	private static float downLength;
+	private static int touchSlop;
+	private static boolean isTouch;
+	private static int imageShiftThreshold;
 
 	public ImageCustomView(Context context,@Nullable AttributeSet attrs)
 	{
@@ -32,20 +30,27 @@ public class ImageCustomView extends LinearLayout
 		super(context,attrs,defStyleAttr);
 	}
 
-	public static void initStatic(@Nullable final Context context)
+	public static void initStatic()
 	{
 		@Nullable
-		final PhotoView photoView_=photoView;
-		if(photoView_!=null)
-		{
-			@NonNull
-			final ViewConfiguration viewConfiguration=ViewConfiguration.get(photoView_.getContext());
-			touchSlop=viewConfiguration.getScaledTouchSlop();
-		}
-		if(context!=null)
+		final WeakReference<PhotoView> photoViewWeakReference=Application.photoView;
+		if(photoViewWeakReference!=null)
 		{
 			@Nullable
-			final Resources resources=context.getResources();
+			final PhotoView photoView=photoViewWeakReference.get();
+			if(photoView!=null)
+			{
+				@NonNull
+				final ViewConfiguration viewConfiguration=ViewConfiguration.get(photoView.getContext());
+				touchSlop=viewConfiguration.getScaledTouchSlop();
+			}
+		}
+		@Nullable
+		final WeakReference<FullImageActivity> fullImageWeakReference=Application.fullImageActivity;
+		if(fullImageWeakReference!=null)
+		{
+			@Nullable
+			final Resources resources=fullImageWeakReference.get().getResources();
 			if(resources!=null)
 			{
 				imageShiftThreshold=resources.getDimensionPixelSize(R.dimen.imageShiftThreshold);
@@ -57,54 +62,59 @@ public class ImageCustomView extends LinearLayout
 	public boolean onInterceptTouchEvent(MotionEvent motionEvent)
 	{
 		@Nullable
-		final PhotoView photoView_=photoView;
-		if(photoView_!=null&&photoView_.getScale() >= MIN_DRAG_ZOOM&&photoView_.getScale()<=MAX_DRAG_ZOOM)
+		final WeakReference<PhotoView> photoViewWeakReference=Application.photoView;
+		if(photoViewWeakReference!=null)
 		{
-			final int imageShiftThreshold_=imageShiftThreshold;
-			final float currentImagePositionY=Math.abs(photoView_.getY());
-			switch(motionEvent.getAction())
+			@Nullable
+			final PhotoView photoView=photoViewWeakReference.get();
+			if(photoView!=null&&photoView.getScale() >= MIN_DRAG_ZOOM&&photoView.getScale()<=MAX_DRAG_ZOOM)
 			{
-				case MotionEvent.ACTION_DOWN:
-					downLength=motionEvent.getY();
-					offsetDY=photoView_.getY()-motionEvent.getRawY();
-					break;
-				case MotionEvent.ACTION_UP:
-					if(currentImagePositionY >= imageShiftThreshold_)
-					{
-						FullImage.closeActivity();
+				final int imageShiftThreshold_=imageShiftThreshold;
+				final float currentImagePositionY=Math.abs(photoView.getY());
+				switch(motionEvent.getAction())
+				{
+					case MotionEvent.ACTION_DOWN:
+						downLength=motionEvent.getY();
+						offsetDY=photoView.getY()-motionEvent.getRawY();
 						break;
-					}
-					isTouch=false;
-					if(!photoView_.isZoomable())
-					{
-						photoView_.setZoomable(true);
-					}
-					photoView_.animate().y(0).setDuration(200).start();
-					break;
-				case MotionEvent.ACTION_MOVE:
-					final float currentDownLength=Math.abs(downLength-motionEvent.getY());
-					if(currentDownLength >= touchSlop&&!isTouch)
-					{
-						isTouch=true;
-					}
-					if(isTouch)
-					{
-						if(photoView_.isZoomable())
-						{
-							photoView_.setZoomable(false);
-						}
-						photoView_.animate().y(motionEvent.getRawY()+offsetDY).setDuration(0).start();
+					case MotionEvent.ACTION_UP:
 						if(currentImagePositionY >= imageShiftThreshold_)
 						{
-							final float transparencyCoefficient=(float)(1-Math.sqrt(Math.abs(currentImagePositionY/1000)));
-							photoView_.animate().alpha(transparencyCoefficient).setDuration(0).start();
+							FullImageActivity.closeActivity();
+							break;
 						}
-						else
+						isTouch=false;
+						if(!photoView.isZoomable())
 						{
-							photoView_.animate().alpha(1).setDuration(0).start();
+							photoView.setZoomable(true);
 						}
-					}
-					break;
+						photoView.animate().y(0).setDuration(200).start();
+						break;
+					case MotionEvent.ACTION_MOVE:
+						final float currentDownLength=Math.abs(downLength-motionEvent.getY());
+						if(currentDownLength >= touchSlop&&!isTouch)
+						{
+							isTouch=true;
+						}
+						if(isTouch)
+						{
+							if(photoView.isZoomable())
+							{
+								photoView.setZoomable(false);
+							}
+							photoView.animate().y(motionEvent.getRawY()+offsetDY).setDuration(0).start();
+							if(currentImagePositionY >= imageShiftThreshold_)
+							{
+								final float transparencyCoefficient=(float)(1-Math.sqrt(Math.abs(currentImagePositionY/1000)));
+								photoView.animate().alpha(transparencyCoefficient).setDuration(0).start();
+							}
+							else
+							{
+								photoView.animate().alpha(1).setDuration(0).start();
+							}
+						}
+						break;
+				}
 			}
 		}
 		return false;

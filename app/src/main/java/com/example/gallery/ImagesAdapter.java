@@ -1,38 +1,34 @@
 package com.example.gallery;
 
-import android.content.Context;
-import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
-import android.widget.GridView;
 import android.widget.ImageView;
-import java.util.ArrayList;
+import android.widget.LinearLayout;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 public class ImagesAdapter extends BaseAdapter
 {
 	@NonNull
-	public static final ArrayList<String> URLS_LIST=new ArrayList<>();
+	static final GalleryHandler GALLERY_HANDLER=new GalleryHandler();
 	@NonNull
-	public static final GalleryHandler GALLERY_HANDLER=new GalleryHandler();
+	final LayoutInflater layoutInflater;
 	@NonNull
 	private static final String LOADING="progress";
 	@NonNull
 	private static final String ERROR="error";
 	@NonNull
 	private static final String LOADING_ERROR="progress error";
-	@Nullable
-	private static Resources resources;
 
-	public ImagesAdapter()
+	public ImagesAdapter(@NonNull final LayoutInflater layoutInflater)
 	{
-		DiskUtils.updateUrlsList();
+		this.layoutInflater=layoutInflater;
 	}
 
 	public static void callNotifyDataSetChanged()
@@ -45,14 +41,13 @@ public class ImagesAdapter extends BaseAdapter
 	@Override
 	public int getCount()
 	{
-		return URLS_LIST.size();
+		return Application.URLS_LIST.size();
 	}
 
 	@Override
-	@NonNull
-	public Object getItem(int i)
+	public String getItem(int i)
 	{
-		return URLS_LIST.get(i);
+		return Application.URLS_LIST.get(i);
 	}
 
 	@Override
@@ -62,75 +57,63 @@ public class ImagesAdapter extends BaseAdapter
 	}
 
 	@Override
-	@NonNull
 	public View getView(final int i,View view,ViewGroup viewGroup)
 	{
-		@NonNull
+		@Nullable
+		final LinearLayout linearLayout;
+		@Nullable
 		final ImageView imageView;
-		if(view==null)
-		{
-			imageView=new ImageView(viewGroup.getContext());
-			if(resources!=null)
-			{
-				final int margin=resources.getDimensionPixelSize(R.dimen.gridViewElementMargin);
-				final int height=resources.getDimensionPixelSize(R.dimen.imageWidth);
-				imageView.setLayoutParams(new GridView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,height));
-				imageView.setPadding(margin,margin,margin,margin);
-			}
-		}
-		else
-		{
-			imageView=(ImageView)view;
-		}
 		@NonNull
-		final String url=URLS_LIST.get(i);
-		if(ImagesDownloader.NO_INTERNET_LINKS.contains(url))
+		final LayoutInflater layoutInflater_=layoutInflater;
+		linearLayout=view==null?(LinearLayout)layoutInflater_.inflate(R.layout.gridview_element,viewGroup,false):(LinearLayout)view;
+		if(linearLayout!=null)
 		{
-			if(!LOADING_ERROR.equals(imageView.getTag()))
+			imageView=linearLayout.findViewById(R.id.gridview_image);
+			if(imageView!=null)
 			{
-				imageView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
-				imageView.setImageResource(R.drawable.ic_no_internet);
-				imageView.setTag(LOADING_ERROR);
+				@NonNull
+				final String url=Application.URLS_LIST.get(i);
+				if(Application.NO_INTERNET_LINKS.contains(url))
+				{
+					if(!LOADING_ERROR.equals(imageView.getTag()))
+					{
+						imageView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+						imageView.setImageResource(R.drawable.ic_no_internet);
+						imageView.setTag(LOADING_ERROR);
+					}
+				}
+				else if(Application.URLS_ERROR_LIST.containsKey(url))
+				{
+					if(!ERROR.equals(imageView.getTag()))
+					{
+						imageView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+						imageView.setImageResource(R.drawable.ic_error);
+						imageView.setTag(ERROR);
+						Application.URLS_LINKS_STATUS.put(url,ERROR);
+					}
+				}
+				else if(!url.equals(imageView.getTag()))
+				{
+					@Nullable
+					final Bitmap bitmap=ImagesDownloader.getImageBitmap(url);
+					if(bitmap!=null)
+					{
+						imageView.setScaleType(ImageView.ScaleType.FIT_CENTER);
+						imageView.setImageBitmap(bitmap);
+						imageView.setTag(url);
+						Application.URLS_LINKS_STATUS.remove(url);
+					}
+					else if(!LOADING.equals(imageView.getTag()))
+					{
+						imageView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+						imageView.setImageResource(R.drawable.ic_progress);
+						imageView.setTag(LOADING);
+						Application.URLS_LINKS_STATUS.put(url,LOADING);
+					}
+				}
 			}
 		}
-		else if(MainActivity.URLS_ERROR_LIST.containsKey(url))
-		{
-			if(!ERROR.equals(imageView.getTag()))
-			{
-				imageView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
-				imageView.setImageResource(R.drawable.ic_error);
-				imageView.setTag(ERROR);
-				MainActivity.URLS_LINKS_STATUS.put(url,ERROR);
-			}
-		}
-		else if(!url.equals(imageView.getTag()))
-		{
-			@Nullable
-			final Bitmap bitmap=ImagesDownloader.getImageBitmap(url);
-			if(bitmap!=null)
-			{
-				imageView.setScaleType(ImageView.ScaleType.FIT_CENTER);
-				imageView.setImageBitmap(bitmap);
-				imageView.setTag(url);
-				MainActivity.URLS_LINKS_STATUS.remove(url);
-			}
-			else if(!LOADING.equals(imageView.getTag()))
-			{
-				imageView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
-				imageView.setImageResource(R.drawable.ic_progress);
-				imageView.setTag(LOADING);
-				MainActivity.URLS_LINKS_STATUS.put(url,LOADING);
-			}
-		}
-		return imageView;
-	}
-
-	public static void initResources(@Nullable final Context context)
-	{
-		if(context!=null)
-		{
-			resources=context.getResources();
-		}
+		return linearLayout;
 	}
 
 	static class GalleryHandler extends Handler
@@ -143,11 +126,14 @@ public class ImagesAdapter extends BaseAdapter
 		@Override
 		public void handleMessage(@NonNull Message msg)
 		{
-			@Nullable
-			final ImagesAdapter imagesAdapter_=MainActivity.imagesAdapter;
-			if(imagesAdapter_!=null)
+			if(Application.mainActivity!=null)
 			{
-				imagesAdapter_.notifyDataSetChanged();
+				@Nullable
+				final MainActivity mainActivity=Application.mainActivity.get();
+				if(mainActivity!=null)
+				{
+					mainActivity.updateAdapter();
+				}
 			}
 		}
 	}

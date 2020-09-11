@@ -1,5 +1,7 @@
 package com.example.gallery;
 
+import android.content.Context;
+import android.os.Environment;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -18,7 +20,7 @@ public final class DiskUtils
 	public static void addStringToLinksfile(@NonNull final String url)
 	{
 		@Nullable
-		final File linksFile_=MainActivity.linksFile;
+		final File linksFile_=Application.linksFile;
 		if(linksFile_!=null)
 		{
 			@NonNull
@@ -59,7 +61,7 @@ public final class DiskUtils
 			{
 				int num=0;
 				@NonNull
-				final BufferedReader bufferedReader=new BufferedReader(new FileReader(MainActivity.linksFile));
+				final BufferedReader bufferedReader=new BufferedReader(new FileReader(Application.linksFile));
 				String string;
 				while((string=bufferedReader.readLine())!=null)
 				{
@@ -72,20 +74,20 @@ public final class DiskUtils
 				if(num>1)
 				{
 					@NonNull
-					final File fullImage=new File(MainActivity.imagesBytesDir,fileName);
+					final File fullImage=new File(Application.imagesBytesDir,fileName);
 					if(fullImage.exists())
 					{
 						//noinspection ResultOfMethodCallIgnored
 						fullImage.delete();
 					}
 					@NonNull
-					final File preview=new File(MainActivity.imagePreviewsDir,fileName);
+					final File preview=new File(Application.imagePreviewsDir,fileName);
 					if(preview.exists())
 					{
 						//noinspection ResultOfMethodCallIgnored
 						preview.delete();
 					}
-					ImagesDownloader.URLS_FILE_NAMES.remove(fileName);
+					Application.URLS_FILE_NAMES.remove(fileName);
 				}
 			}
 			catch(Exception e)
@@ -95,64 +97,84 @@ public final class DiskUtils
 		}
 	}
 
-	public static void makeDirs()
+	public static void initCacheDirs(@Nullable final Context context)
 	{
-		@Nullable
-		final File cacheDir=MainActivity.cacheDir;
-		try
+		if(context!=null)
 		{
-			if(cacheDir!=null&&!cacheDir.exists())
+			try
 			{
-				//noinspection ResultOfMethodCallIgnored
-				cacheDir.mkdirs();
+				if(Environment.isExternalStorageEmulated()||!Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState())||(Application.cacheDir=context.getExternalCacheDir())==null||!Application.cacheDir.canWrite())
+				{
+					Application.cacheDir=context.getCacheDir();
+				}
 			}
-			@Nullable
-			final File imagePreviewsDir=MainActivity.imagePreviewsDir;
-			if(imagePreviewsDir!=null&&!imagePreviewsDir.exists())
+			catch(Throwable e)
 			{
-				//noinspection ResultOfMethodCallIgnored
-				imagePreviewsDir.mkdirs();
+				Application.cacheDir=context.getCacheDir();
 			}
-			@Nullable
-			final File imageBytesDir=MainActivity.imagesBytesDir;
-			if(imageBytesDir!=null&&!imageBytesDir.exists())
+			// TODO разбить на методы
+			@NonNull
+			final File cacheDir_=Application.cacheDir;
+			Application.imagePreviewsDir=new File(cacheDir_,"previews");
+			Application.imagesBytesDir=new File(cacheDir_,"bytes");
+			Application.textfilesDir=new File(cacheDir_,"textfiles");
+			Application.linksFile=new File(Application.textfilesDir,"links.txt");
+			try
 			{
-				//noinspection ResultOfMethodCallIgnored
-				imageBytesDir.mkdirs();
+				if(!cacheDir_.exists())
+				{
+					//noinspection ResultOfMethodCallIgnored
+					cacheDir_.mkdirs();
+				}
+				@NonNull
+				final File imagePreviewsDir_=Application.imagePreviewsDir;
+				if(imagePreviewsDir_.exists())
+				{
+					//noinspection ResultOfMethodCallIgnored
+					imagePreviewsDir_.mkdirs();
+				}
+				@NonNull
+				final File imageBytesDir_=Application.imagesBytesDir;
+				if(!imageBytesDir_.exists())
+				{
+					//noinspection ResultOfMethodCallIgnored
+					imageBytesDir_.mkdirs();
+				}
 			}
-		}
-		catch(Exception e)
-		{
-			e.printStackTrace();
-		}
-		try
-		{
-			@Nullable
-			final File linksFile_=MainActivity.linksFile;
-			if(linksFile_!=null&&!linksFile_.exists())
+			catch(Exception e)
+			{
+				e.printStackTrace();
+			}
+			try
 			{
 				@NonNull
-				final File textfilesdir=new File(cacheDir,"textfiles");
-				if(!textfilesdir.exists())
-				{
-					//noinspection ResultOfMethodCallIgnored
-					textfilesdir.mkdirs();
-				}
+				final File linksFile_=Application.linksFile;
 				if(!linksFile_.exists())
 				{
-					//noinspection ResultOfMethodCallIgnored
-					linksFile_.createNewFile();
+					@NonNull
+					final File textfilesdir=new File(cacheDir_,"textfiles");
+					if(!textfilesdir.exists())
+					{
+						//noinspection ResultOfMethodCallIgnored
+						textfilesdir.mkdirs();
+					}
+					if(!linksFile_.exists())
+					{
+						//noinspection ResultOfMethodCallIgnored
+						linksFile_.createNewFile();
+					}
 				}
 			}
-		}
-		catch(Exception e)
-		{
-			e.printStackTrace();
+			catch(Exception e)
+			{
+				e.printStackTrace();
+			}
 		}
 	}
 
 	static void optimizeDisk()
 	{
+		// TODO определение папки
 		new Thread()
 		{
 			@Override
@@ -162,12 +184,12 @@ public final class DiskUtils
 				{
 					@NonNull
 					final ArrayList<String> diskFiles=new ArrayList<>();
-					for(final String string : ImagesAdapter.URLS_LIST)
+					for(final String string : Application.URLS_LIST)
 					{
 						diskFiles.add(ImagesDownloader.urlToHashMD5(string));
 					}
 					@Nullable
-					final File imagesBytesDir_=MainActivity.imagesBytesDir;
+					final File imagesBytesDir_=Application.imagesBytesDir;
 					if(imagesBytesDir_!=null&&imagesBytesDir_.exists())
 					{
 						@NonNull
@@ -196,10 +218,10 @@ public final class DiskUtils
 		}.start();
 	}
 
-	public static void removeStringFromLinksfile(int numToDelete)
+	public static void removeStringFromLinksfile(final int numToDelete)
 	{
 		@Nullable
-		final File linksFile_=MainActivity.linksFile;
+		final File linksFile_=Application.linksFile;
 		if(linksFile_!=null)
 		{
 			@NonNull
@@ -211,7 +233,7 @@ public final class DiskUtils
 				String string;
 				while((string=bufferedReader.readLine())!=null)
 				{
-					if(!string.equals(ImagesAdapter.URLS_LIST.get(numToDelete)))
+					if(!string.equals(Application.URLS_LIST.get(numToDelete)))
 					{
 						LinksFileString.add(string);
 					}
@@ -236,16 +258,17 @@ public final class DiskUtils
 
 	public static void updateUrlsList()
 	{
-		ImagesAdapter.URLS_LIST.clear();
 		try
 		{
+			Application.URLS_LIST.clear();
 			@NonNull
-			final BufferedReader bufferedReader=new BufferedReader(new FileReader(MainActivity.linksFile));
+			final BufferedReader bufferedReader=new BufferedReader(new FileReader(Application.linksFile));
+			@Nullable
 			String url;
 			while((url=bufferedReader.readLine())!=null)
 			{
-				ImagesAdapter.URLS_LIST.add(url);
-				MainActivity.URLS_LINKS_STATUS.put(url,"progress");
+				Application.URLS_LIST.add(url);
+				Application.URLS_LINKS_STATUS.put(url,"progress");
 			}
 			bufferedReader.close();
 		}

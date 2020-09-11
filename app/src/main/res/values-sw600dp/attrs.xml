@@ -1,5 +1,5 @@
 <resources>
-	<dimen name="imageWidth">100dp</dimen>
+	<dimen name="imageHeight">100dp</dimen>
 	<dimen name="preloaderSize">64dp</dimen>
 	<dimen name="imageShiftThreshold">120dp</dimen>
 </resources>

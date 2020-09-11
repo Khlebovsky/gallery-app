@@ -1,6 +1,5 @@
 package com.example.gallery;
 
-import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -15,8 +14,6 @@ public final class ClientServer
 {
 	@NonNull
 	static final RequestHandler REQUEST_HANDLER=new RequestHandler();
-	@Nullable
-	static Context context;
 	@NonNull
 	private static final String SCRIPT_URL="https://khlebovsky.ru/linkseditor.php";
 	@NonNull
@@ -71,7 +68,7 @@ public final class ClientServer
 					final OkHttpClient client=ConnectionSettings.getOkHttpClient();
 					@NonNull
 					final RequestBody requestBody=new FormBody.Builder().add("Login",SCRIPT_LOGIN).add("Password",SCRIPT_PASSWORD).add("Task",DELETE_TASK).add("Delete",String.valueOf(numToDelete))
-						.add("Link",ImagesAdapter.URLS_LIST.get(numToDelete)).build();
+						.add("Link",Application.URLS_LIST.get(numToDelete)).build();
 					@NonNull
 					final Call call=client.newCall(new Request.Builder().url(SCRIPT_URL).post(requestBody).build());
 					call.enqueue(new DeleteImageRequestCallback(numToDelete));
@@ -83,14 +80,6 @@ public final class ClientServer
 				}
 			}
 		}.start();
-	}
-
-	public static void initContext(@Nullable final Context context)
-	{
-		if(context!=null)
-		{
-			ClientServer.context=context;
-		}
 	}
 
 	private static final class AddImageRequestCallback implements Callback
@@ -115,7 +104,7 @@ public final class ClientServer
 		public void onResponse(@NonNull Call call,@NonNull Response response)
 		{
 			DiskUtils.addStringToLinksfile(url);
-			ImagesAdapter.URLS_LIST.add(url);
+			Application.URLS_LIST.add(url);
 			@NonNull
 			final Message message=REQUEST_HANDLER.obtainMessage(0,1,1,url);
 			REQUEST_HANDLER.sendMessage(message);
@@ -144,14 +133,14 @@ public final class ClientServer
 		public void onResponse(@NonNull Call call,@NonNull Response response)
 		{
 			@NonNull
-			final String urlToDelete=ImagesAdapter.URLS_LIST.get(numToDelete);
+			final String urlToDelete=Application.URLS_LIST.get(numToDelete);
 			@NonNull
 			final String fileName=ImagesDownloader.urlToHashMD5(urlToDelete);
 			DiskUtils.removeStringFromLinksfile(numToDelete);
 			DiskUtils.deleteImageFromDisk(fileName);
-			ImagesDownloader.URLS_FILE_NAMES.remove(urlToDelete);
-			MainActivity.URLS_LINKS_STATUS.remove(urlToDelete);
-			ImagesAdapter.URLS_LIST.remove(numToDelete);
+			Application.URLS_FILE_NAMES.remove(urlToDelete);
+			Application.URLS_LINKS_STATUS.remove(urlToDelete);
+			Application.URLS_LIST.remove(numToDelete);
 			@NonNull
 			final Message message=REQUEST_HANDLER.obtainMessage(0,2,2,urlToDelete);
 			REQUEST_HANDLER.sendMessage(message);
@@ -172,23 +161,31 @@ public final class ClientServer
 			super.handleMessage(msg);
 			@Nullable
 			final String result=(String)msg.obj;
-			if(context!=null&&result!=null)
+			if(Application.mainActivity!=null)
 			{
-				if("error".equals(result))
+				@Nullable
+				final MainActivity mainActivity=Application.mainActivity.get();
+				if(mainActivity!=null)
 				{
-					StyleableToast.makeText(context,"Произошла ошибка. Попробуйте ещё раз",Toast.LENGTH_SHORT,R.style.ToastStyle).show();
-				}
-				else
-				{
-					final int status=msg.arg1;
-					switch(status)
+					if(result!=null)
 					{
-						case 1:
-							StyleableToast.makeText(context,"Картинка добавлена: \n"+result,Toast.LENGTH_SHORT,R.style.ToastStyle).show();
-							break;
-						case 2:
-							StyleableToast.makeText(context,"Картинка удалена: \n"+result,Toast.LENGTH_SHORT,R.style.ToastStyle).show();
-							break;
+						if("error".equals(result))
+						{
+							StyleableToast.makeText(mainActivity,"Произошла ошибка. Попробуйте ещё раз",Toast.LENGTH_SHORT,R.style.ToastStyle).show();
+						}
+						else
+						{
+							final int status=msg.arg1;
+							switch(status)
+							{
+								case 1:
+									StyleableToast.makeText(mainActivity,"Картинка добавлена: \n"+result,Toast.LENGTH_SHORT,R.style.ToastStyle).show();
+									break;
+								case 2:
+									StyleableToast.makeText(mainActivity,"Картинка удалена: \n"+result,Toast.LENGTH_SHORT,R.style.ToastStyle).show();
+									break;
+							}
+						}
 					}
 				}
 			}

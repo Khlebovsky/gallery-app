@@ -33,25 +33,15 @@ public final class LruMemoryCache
 	{
 		if(memoryCache==null)
 		{
-			memoryCache=new LruCache<String,Bitmap>(getQuantityItemsOnScreen)
-			{
-				@Override
-				protected int sizeOf(String key,Bitmap value)
-				{
-					return 1;
-				}
-			};
+			memoryCache=new LruCache<>(getQuantityItemsOnScreen);
 		}
 	}
 
 	static void resizeMemoryCache(final int getQuantityItemsOnScreen)
 	{
-		if(memoryCache!=null)
+		if(memoryCache!=null&&Build.VERSION.SDK_INT >= RESIZE_MEMORY_CACHE_API)
 		{
-			if(Build.VERSION.SDK_INT >= RESIZE_MEMORY_CACHE_API)
-			{
-				memoryCache.resize(getQuantityItemsOnScreen);
-			}
+			memoryCache.resize(getQuantityItemsOnScreen);
 		}
 	}
 }

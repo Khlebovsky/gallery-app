@@ -60,16 +60,16 @@
 			android:theme="@style/LauncherTheme" />
 
 		<activity
-			android:name=".FullImage"
+			android:name=".FullImageActivity"
 			android:configChanges="mcc|mnc|screenLayout|touchscreen|smallestScreenSize|keyboard|keyboardHidden|navigation|orientation|screenSize|fontScale|layoutDirection|colorMode|locale|uiMode"
 			android:theme="@style/FullImageScreen" />
 
 		<activity
-			android:name=".SaveImage"
+			android:name=".SaveImageActivity"
 			android:configChanges="mcc|mnc|screenLayout|touchscreen|smallestScreenSize|keyboard|keyboardHidden|navigation|orientation|screenSize|fontScale|layoutDirection|colorMode|locale|uiMode"
 			android:excludeFromRecents="true"
 			android:launchMode="singleInstance"
-			android:taskAffinity=":saveImage"
+			android:taskAffinity=":saveImageActivity"
 			android:theme="@style/SaveImageScreen">
 
 			<intent-filter>

@@ -1,7 +1,7 @@
 <resources>
-	<dimen name="imageWidth">80dp</dimen>
+	<dimen name="imageHeight">80dp</dimen>
 	<dimen name="preloaderSize">48dp</dimen>
 	<dimen name="toolbarTitleSize">18sp</dimen>
-	<dimen name="gridViewElementMargin">4dp</dimen>
+	<dimen name="gridViewElementPadding">4dp</dimen>
 	<dimen name="imageShiftThreshold">100dp</dimen>
 </resources>
