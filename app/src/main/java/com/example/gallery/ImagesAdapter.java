@@ -64,8 +64,8 @@ public class ImagesAdapter extends BaseAdapter
 		@Nullable
 		final ImageView imageView;
 		@NonNull
-		final LayoutInflater layoutInflater_=layoutInflater;
-		linearLayout=view==null?(LinearLayout)layoutInflater_.inflate(R.layout.gridview_element,viewGroup,false):(LinearLayout)view;
+		final LayoutInflater layoutInflater=this.layoutInflater;
+		linearLayout=view==null?(LinearLayout)layoutInflater.inflate(R.layout.gridview_element,viewGroup,false):(LinearLayout)view;
 		if(linearLayout!=null)
 		{
 			imageView=linearLayout.findViewById(R.id.gridview_image);
@@ -73,7 +73,7 @@ public class ImagesAdapter extends BaseAdapter
 			{
 				@NonNull
 				final String url=Application.URLS_LIST.get(i);
-				if(Application.NO_INTERNET_LINKS.contains(url))
+				if(Application.NO_INTERNET.equals(Application.getUrlStatus(url)))
 				{
 					if(!LOADING_ERROR.equals(imageView.getTag()))
 					{
@@ -89,7 +89,7 @@ public class ImagesAdapter extends BaseAdapter
 						imageView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
 						imageView.setImageResource(R.drawable.ic_error);
 						imageView.setTag(ERROR);
-						Application.URLS_LINKS_STATUS.put(url,ERROR);
+						Application.addUrlInUrlsStatusList(url,ERROR);
 					}
 				}
 				else if(!url.equals(imageView.getTag()))
@@ -101,14 +101,14 @@ public class ImagesAdapter extends BaseAdapter
 						imageView.setScaleType(ImageView.ScaleType.FIT_CENTER);
 						imageView.setImageBitmap(bitmap);
 						imageView.setTag(url);
-						Application.URLS_LINKS_STATUS.remove(url);
+						Application.removeUrlFromUrlsStatusList(url);
 					}
 					else if(!LOADING.equals(imageView.getTag()))
 					{
 						imageView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
 						imageView.setImageResource(R.drawable.ic_progress);
 						imageView.setTag(LOADING);
-						Application.URLS_LINKS_STATUS.put(url,LOADING);
+						Application.addUrlInUrlsStatusList(url,LOADING);
 					}
 				}
 			}

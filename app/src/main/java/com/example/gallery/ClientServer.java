@@ -1,11 +1,13 @@
 package com.example.gallery;
 
+import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.widget.Toast;
 import com.muddzdev.styleabletoast.StyleableToast;
 import java.io.*;
+import java.lang.ref.WeakReference;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import okhttp3.*;
@@ -14,6 +16,8 @@ public final class ClientServer
 {
 	@NonNull
 	static final RequestHandler REQUEST_HANDLER=new RequestHandler();
+	@Nullable
+	static Context context;
 	@NonNull
 	private static final String SCRIPT_URL="https://khlebovsky.ru/linkseditor.php";
 	@NonNull
@@ -24,6 +28,8 @@ public final class ClientServer
 	private static final String DELETE_TASK="Delete";
 	@NonNull
 	private static final String ADD_TASK="Add";
+	@NonNull
+	private static final String ERROR="error";
 
 	private ClientServer()
 	{
@@ -82,6 +88,11 @@ public final class ClientServer
 		}.start();
 	}
 
+	public static void init(@NonNull final Context context)
+	{
+		ClientServer.context=context;
+	}
+
 	private static final class AddImageRequestCallback implements Callback
 	{
 		@NonNull
@@ -96,14 +107,17 @@ public final class ClientServer
 		public void onFailure(@NonNull Call call,@NonNull IOException e)
 		{
 			@NonNull
-			final Message message=REQUEST_HANDLER.obtainMessage(0,"error");
+			final Message message=REQUEST_HANDLER.obtainMessage(0,ERROR);
 			REQUEST_HANDLER.sendMessage(message);
 		}
 
 		@Override
 		public void onResponse(@NonNull Call call,@NonNull Response response)
 		{
-			DiskUtils.addStringToLinksfile(url);
+			if(context!=null)
+			{
+				DiskUtils.addStringToLinksfile(url,context);
+			}
 			Application.URLS_LIST.add(url);
 			@NonNull
 			final Message message=REQUEST_HANDLER.obtainMessage(0,1,1,url);
@@ -125,7 +139,7 @@ public final class ClientServer
 		public void onFailure(@NonNull Call call,@NonNull IOException e)
 		{
 			@NonNull
-			final Message message=REQUEST_HANDLER.obtainMessage(0,"error");
+			final Message message=REQUEST_HANDLER.obtainMessage(0,ERROR);
 			REQUEST_HANDLER.sendMessage(message);
 		}
 
@@ -136,10 +150,13 @@ public final class ClientServer
 			final String urlToDelete=Application.URLS_LIST.get(numToDelete);
 			@NonNull
 			final String fileName=ImagesDownloader.urlToHashMD5(urlToDelete);
-			DiskUtils.removeStringFromLinksfile(numToDelete);
-			DiskUtils.deleteImageFromDisk(fileName);
+			if(context!=null)
+			{
+				DiskUtils.removeStringFromLinksfile(numToDelete,context);
+				DiskUtils.deleteImageFromDisk(fileName,context);
+			}
 			Application.URLS_FILE_NAMES.remove(urlToDelete);
-			Application.URLS_LINKS_STATUS.remove(urlToDelete);
+			Application.removeUrlFromUrlsStatusList(urlToDelete);
 			Application.URLS_LIST.remove(numToDelete);
 			@NonNull
 			final Message message=REQUEST_HANDLER.obtainMessage(0,2,2,urlToDelete);
@@ -161,15 +178,17 @@ public final class ClientServer
 			super.handleMessage(msg);
 			@Nullable
 			final String result=(String)msg.obj;
-			if(Application.mainActivity!=null)
+			@Nullable
+			final WeakReference<MainActivity> mainActivityWeakReference=Application.mainActivity;
+			if(mainActivityWeakReference!=null)
 			{
 				@Nullable
-				final MainActivity mainActivity=Application.mainActivity.get();
+				final MainActivity mainActivity=mainActivityWeakReference.get();
 				if(mainActivity!=null)
 				{
 					if(result!=null)
 					{
-						if("error".equals(result))
+						if(ERROR.equals(result))
 						{
 							StyleableToast.makeText(mainActivity,"Произошла ошибка. Попробуйте ещё раз",Toast.LENGTH_SHORT,R.style.ToastStyle).show();
 						}

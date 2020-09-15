@@ -1,7 +1,6 @@
 package com.example.gallery;
 
 import android.content.Context;
-import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.view.ViewGroup;
@@ -26,14 +25,13 @@ public final class ImagesDownloader
 	@NonNull
 	static final ArrayList<String> URLS_IN_PROGRESS=new ArrayList<>();
 	@Nullable
-	static final File PREVIEWS=Application.imagePreviewsDir;
-	@Nullable
-	static final File BYTES=Application.imagesBytesDir;
-	static int imageWidth;
+	static Context context;
 	private static final int CONTROL_NUMBER_OF_BYTES=50000;
 	@NonNull
 	private static final String IMAGES_URL="https://khlebovsky.ru/images.txt";
 	private static final int ERROR_TIME_SLEEP=1500;
+	@NonNull
+	private static final String SHARED_PREFERENCES_CPU_THREADS_NUM_KEY="CpuThreadsNum";
 	private static int maxThreadNum=2;
 
 	private ImagesDownloader()
@@ -154,189 +152,116 @@ public final class ImagesDownloader
 
 	static void downloadOrGetImageFromDisk(@NonNull final String url)
 	{
-		@NonNull
-		final String urlHashMD5=urlToHashMD5(url);
-		@NonNull
-		final File path=new File(PREVIEWS,urlHashMD5);
-		if(path.exists())
+		@Nullable
+		final Context context=ImagesDownloader.context;
+		if(context!=null)
 		{
-			new Thread()
+			@NonNull
+			final String urlHashMD5=urlToHashMD5(url);
+			@NonNull
+			final File path=new File(DiskUtils.getImagePreviewsDir(DiskUtils.getCacheDir(context)),urlHashMD5);
+			if(path.exists())
 			{
-				@Override
-				public void run()
+				new Thread()
 				{
-					ThreadsCounter.increaseThreadsCounter();
-					try
+					@Override
+					public void run()
 					{
-						@Nullable
-						final Bitmap bitmap=BitmapFactory.decodeFile(String.valueOf(path));
-						if(bitmap!=null)
-						{
-							LruMemoryCache.addBitmapToMemoryCache(url,bitmap);
-							Application.URLS_FILE_NAMES.put(url,urlHashMD5);
-						}
-						else
-						{
-							Application.URLS_ERROR_LIST.put(url,"Decoding error");
-							Application.URLS_FILE_NAMES.put(url,"error");
-						}
-					}
-					catch(Exception e)
-					{
-						e.printStackTrace();
-					}
-					URLS_IN_PROGRESS.remove(url);
-					ThreadsCounter.decreaseThreadsCounter();
-					ImagesAdapter.callNotifyDataSetChanged();
-				}
-			}.start();
-		}
-		else
-		{
-			new Thread()
-			{
-				@Override
-				public void run()
-				{
-					ThreadsCounter.increaseThreadsCounter();
-					@Nullable
-					String exception=null;
-					@Nullable
-					String status=null;
-					if(PREVIEWS!=null&&!PREVIEWS.exists())
-					{
-						//noinspection ResultOfMethodCallIgnored
-						PREVIEWS.mkdirs();
-					}
-					if(BYTES!=null&&!BYTES.exists())
-					{
-						//noinspection ResultOfMethodCallIgnored
-						BYTES.mkdirs();
-					}
-					for(int i=0;i<Application.DOWNLOADING_REPEAT_NUM;i++)
-					{
-						if(!Application.isInternetAvaliable)
-						{
-							Application.NO_INTERNET_LINKS.add(url);
-							break;
-						}
+						ThreadsCounter.increaseThreadsCounter();
 						try
 						{
-							@NonNull
-							final OkHttpClient client=ConnectionSettings.getOkHttpClient();
-							@NonNull
-							final Call call=client.newCall(new Request.Builder().url(url).get().build());
-							@NonNull
-							final Response response=call.execute();
-							@NonNull
-							final ByteArrayOutputStream byteArrayOutputStream=new ByteArrayOutputStream();
 							@Nullable
-							InputStream inputStream=null;
-							if(response.code()==200||response.code()==201)
+							final Bitmap bitmap=BitmapFactory.decodeFile(String.valueOf(path));
+							if(bitmap!=null)
 							{
-								Application.NO_INTERNET_LINKS.remove(url);
+								LruMemoryCache.addBitmapToMemoryCache(url,bitmap);
+								Application.URLS_FILE_NAMES.put(url,urlHashMD5);
+							}
+							else
+							{
+								Application.URLS_ERROR_LIST.put(url,"Decoding error");
+								Application.URLS_FILE_NAMES.put(url,"error");
+							}
+						}
+						catch(Exception e)
+						{
+							e.printStackTrace();
+						}
+						URLS_IN_PROGRESS.remove(url);
+						ThreadsCounter.decreaseThreadsCounter();
+						ImagesAdapter.callNotifyDataSetChanged();
+					}
+				}.start();
+			}
+			else
+			{
+				new Thread()
+				{
+					@Override
+					public void run()
+					{
+						ThreadsCounter.increaseThreadsCounter();
+						@Nullable
+						String exception=null;
+						@Nullable
+						String status=null;
+						for(int i=0;i<Application.DOWNLOADING_REPEAT_NUM;i++)
+						{
+							if(!Application.isInternetAvaliable)
+							{
+								Application.addUrlInUrlsStatusList(url,Application.NO_INTERNET);
+								break;
+							}
+							try
+							{
 								@NonNull
-								boolean isImage=true;
-								try
+								final OkHttpClient client=ConnectionSettings.getOkHttpClient();
+								@NonNull
+								final Call call=client.newCall(new Request.Builder().url(url).get().build());
+								@NonNull
+								final Response response=call.execute();
+								@NonNull
+								final ByteArrayOutputStream byteArrayOutputStream=new ByteArrayOutputStream();
+								@Nullable
+								InputStream inputStream=null;
+								if(response.code()==200||response.code()==201)
 								{
-									if(response.body()!=null)
+									if(Application.NO_INTERNET.equals(Application.getUrlStatus(url)))
 									{
-										inputStream=response.body().byteStream();
+										Application.removeUrlFromUrlsStatusList(url);
 									}
 									@NonNull
-									final byte[] buffer=new byte[4096];
-									@NonNull
-									int bytes;
-									if(inputStream!=null)
+									boolean isImage=true;
+									try
 									{
-										while((bytes=inputStream.read(buffer))>0)
+										if(response.body()!=null)
 										{
-											byteArrayOutputStream.write(buffer,0,bytes);
-											if(byteArrayOutputStream.toByteArray().length>CONTROL_NUMBER_OF_BYTES)
-											{
-												try
-												{
-													@NonNull
-													final BitmapFactory.Options options=new BitmapFactory.Options();
-													options.inJustDecodeBounds=true;
-													BitmapFactory.decodeByteArray(byteArrayOutputStream.toByteArray(),0,byteArrayOutputStream.toByteArray().length,options);
-													@NonNull
-													final int originalBitmapWidth=options.outWidth;
-													if(originalBitmapWidth==-1)
-													{
-														isImage=false;
-														break;
-													}
-												}
-												catch(Exception e)
-												{
-													e.printStackTrace();
-												}
-											}
+											inputStream=response.body().byteStream();
 										}
-									}
-									if(isImage)
-									{
-										try
+										@NonNull
+										final byte[] buffer=new byte[4096];
+										@NonNull
+										int bytes;
+										if(inputStream!=null)
 										{
-											@NonNull
-											final File pathBytes=new File(BYTES,urlHashMD5);
-											@NonNull
-											final OutputStream outputStream=new FileOutputStream(pathBytes);
-											byteArrayOutputStream.writeTo(outputStream);
-											outputStream.flush();
-											outputStream.close();
-											@NonNull
-											final BitmapFactory.Options options=new BitmapFactory.Options();
-											options.inJustDecodeBounds=true;
-											BitmapFactory.decodeByteArray(byteArrayOutputStream.toByteArray(),0,byteArrayOutputStream.toByteArray().length,options);
-											@NonNull
-											int originalBitmapWidth=options.outWidth;
-											if(originalBitmapWidth==-1)
+											while((bytes=inputStream.read(buffer))>0)
 											{
-												exception="Decoding error";
-												status="error";
-											}
-											else
-											{
-												int factor=0;
-												while(originalBitmapWidth>imageWidth)
+												byteArrayOutputStream.write(buffer,0,bytes);
+												if(byteArrayOutputStream.toByteArray().length>CONTROL_NUMBER_OF_BYTES)
 												{
-													originalBitmapWidth/=2;
-													factor+=2;
-												}
-												final float heightRatio=(float)originalBitmapWidth/imageWidth*100;
-												if(heightRatio<75)
-												{
-													factor-=2;
-												}
-												@NonNull
-												final BitmapFactory.Options previewOptions=new BitmapFactory.Options();
-												previewOptions.inSampleSize=factor;
-												@Nullable
-												Bitmap preview=null;
-												try
-												{
-													preview=BitmapFactory.decodeByteArray(byteArrayOutputStream.toByteArray(),0,byteArrayOutputStream.toByteArray().length,previewOptions);
-												}
-												catch(Exception e)
-												{
-													e.printStackTrace();
-												}
-												if(preview!=null)
-												{
-													LruMemoryCache.addBitmapToMemoryCache(url,preview);
-													Application.URLS_FILE_NAMES.put(url,urlHashMD5);
-													@NonNull
-													final File previewName=new File(PREVIEWS,urlHashMD5);
 													try
 													{
 														@NonNull
-														final FileOutputStream fileOutputStream=new FileOutputStream(previewName);
-														preview.compress(Bitmap.CompressFormat.PNG,100,fileOutputStream);
-														fileOutputStream.flush();
-														fileOutputStream.close();
-														break;
+														final BitmapFactory.Options options=new BitmapFactory.Options();
+														options.inJustDecodeBounds=true;
+														BitmapFactory.decodeByteArray(byteArrayOutputStream.toByteArray(),0,byteArrayOutputStream.toByteArray().length,options);
+														@NonNull
+														final int originalBitmapWidth=options.outWidth;
+														if(originalBitmapWidth==-1)
+														{
+															isImage=false;
+															break;
+														}
 													}
 													catch(Exception e)
 													{
@@ -345,75 +270,147 @@ public final class ImagesDownloader
 												}
 											}
 										}
-										catch(Exception e)
+										if(isImage)
+										{
+											try
+											{
+												@NonNull
+												final File pathBytes=new File((DiskUtils.getImagesBytesDir(DiskUtils.getCacheDir(context))),urlHashMD5);
+												@NonNull
+												final OutputStream outputStream=new FileOutputStream(pathBytes);
+												byteArrayOutputStream.writeTo(outputStream);
+												outputStream.flush();
+												outputStream.close();
+												@NonNull
+												final BitmapFactory.Options options=new BitmapFactory.Options();
+												options.inJustDecodeBounds=true;
+												BitmapFactory.decodeByteArray(byteArrayOutputStream.toByteArray(),0,byteArrayOutputStream.toByteArray().length,options);
+												@NonNull
+												int originalBitmapWidth=options.outWidth;
+												if(originalBitmapWidth==-1)
+												{
+													exception="Decoding error";
+													status="error";
+												}
+												else
+												{
+													int factor=0;
+													final int imageWidth=context.getResources().getDimensionPixelSize(R.dimen.imageSize);
+													while(originalBitmapWidth>imageWidth)
+													{
+														originalBitmapWidth/=2;
+														factor+=2;
+													}
+													final float heightRatio=(float)originalBitmapWidth/imageWidth*100;
+													if(heightRatio<75)
+													{
+														factor-=2;
+													}
+													@NonNull
+													final BitmapFactory.Options previewOptions=new BitmapFactory.Options();
+													previewOptions.inSampleSize=factor;
+													@Nullable
+													Bitmap preview=null;
+													try
+													{
+														preview=BitmapFactory.decodeByteArray(byteArrayOutputStream.toByteArray(),0,byteArrayOutputStream.toByteArray().length,previewOptions);
+													}
+													catch(Exception e)
+													{
+														e.printStackTrace();
+													}
+													if(preview!=null)
+													{
+														LruMemoryCache.addBitmapToMemoryCache(url,preview);
+														Application.URLS_FILE_NAMES.put(url,urlHashMD5);
+														@NonNull
+														final File previewName=new File((DiskUtils.getImagePreviewsDir(DiskUtils.getCacheDir(context))),urlHashMD5);
+														try
+														{
+															@NonNull
+															final FileOutputStream fileOutputStream=new FileOutputStream(previewName);
+															preview.compress(Bitmap.CompressFormat.PNG,100,fileOutputStream);
+															fileOutputStream.flush();
+															fileOutputStream.close();
+															break;
+														}
+														catch(Exception e)
+														{
+															e.printStackTrace();
+														}
+													}
+												}
+											}
+											catch(Exception e)
+											{
+												status="error";
+												exception=String.valueOf(e);
+												e.printStackTrace();
+											}
+										}
+										else
 										{
 											status="error";
-											exception=String.valueOf(e);
-											e.printStackTrace();
+											exception="The file is not a picture";
 										}
 									}
-									else
+									catch(Exception e)
 									{
 										status="error";
-										exception="The file is not a picture";
+										exception=String.valueOf(e);
+										e.printStackTrace();
 									}
-								}
-								catch(Exception e)
-								{
-									status="error";
-									exception=String.valueOf(e);
-									e.printStackTrace();
-								}
-								finally
-								{
-									if(inputStream!=null)
+									finally
 									{
-										inputStream.close();
+										if(inputStream!=null)
+										{
+											inputStream.close();
+										}
 									}
 								}
+								else
+								{
+									status="Connection error";
+									exception="Response code: "+response.code();
+								}
 							}
-							else
+							catch(Exception e)
 							{
-								status="Connection error";
-								exception="Response code: "+response.code();
+								status="error";
+								exception=String.valueOf(e);
+								e.printStackTrace();
+							}
+							if(!Application.isInternetAvaliable)
+							{
+								Application.addUrlInUrlsStatusList(url,Application.NO_INTERNET);
+								break;
+							}
+							try
+							{
+								sleep(ERROR_TIME_SLEEP);
+							}
+							catch(InterruptedException e)
+							{
+								e.printStackTrace();
+							}
+							if(!Application.isInternetAvaliable)
+							{
+								Application.addUrlInUrlsStatusList(url,Application.NO_INTERNET);
+								break;
+							}
+							if(i==Application.DOWNLOADING_REPEAT_NUM-1&&status!=null&&exception!=null)
+							{
+								Application.URLS_ERROR_LIST.put(url,exception);
+								Application.addUrlInUrlsStatusList(url,status);
+								Application.URLS_FILE_NAMES.put(url,"error");
 							}
 						}
-						catch(Exception e)
-						{
-							status="error";
-							exception=String.valueOf(e);
-							e.printStackTrace();
-						}
-						if(!Application.isInternetAvaliable)
-						{
-							Application.NO_INTERNET_LINKS.add(url);
-							break;
-						}
-						try
-						{
-							sleep(ERROR_TIME_SLEEP);
-						}
-						catch(InterruptedException e)
-						{
-							e.printStackTrace();
-						}
-						if(!Application.isInternetAvaliable)
-						{
-							Application.NO_INTERNET_LINKS.add(url);
-							break;
-						}
-						if(i==Application.DOWNLOADING_REPEAT_NUM-1&&status!=null&&exception!=null)
-						{
-							Application.URLS_ERROR_LIST.put(url,exception);
-							Application.URLS_LINKS_STATUS.put(url,status);
-							Application.URLS_FILE_NAMES.put(url,"error");
-						}
+						URLS_IN_PROGRESS.remove(url);
+						ThreadsCounter.decreaseThreadsCounter();
+						ImagesAdapter.callNotifyDataSetChanged();
 					}
-					URLS_IN_PROGRESS.remove(url);
-					ThreadsCounter.decreaseThreadsCounter();
-					ImagesAdapter.callNotifyDataSetChanged();
-				}
-			}.start();
+				}.start();
+			}
 		}
 	}
 
@@ -430,10 +427,7 @@ public final class ImagesDownloader
 			if(Application.URLS_FILE_NAMES.containsKey(url)&&URLS_IN_PROGRESS.contains(url))
 			{
 				URLS_IN_PROGRESS.remove(url);
-				if(LruMemoryCache.memoryCache!=null)
-				{
-					LruMemoryCache.memoryCache.remove(url);
-				}
+				LruMemoryCache.removeBitmapFromMemoryCache(url);
 				ImagesAdapter.callNotifyDataSetChanged();
 			}
 			if(!URLS_IN_PROGRESS.contains(url))
@@ -470,7 +464,7 @@ public final class ImagesDownloader
 					else
 					{
 						@NonNull
-						final File path=new File(Application.imagesBytesDir,fileName);
+						final File path=new File((DiskUtils.getImagesBytesDir(DiskUtils.getCacheDir(context))),fileName);
 						@NonNull
 						final BitmapFactory.Options options=new BitmapFactory.Options();
 						options.inJustDecodeBounds=true;
@@ -544,40 +538,38 @@ public final class ImagesDownloader
 		return reductionRatio;
 	}
 
-	public static void init()
+	public static void init(@NonNull final Context context)
 	{
-		@Nullable
-		final WeakReference<MainActivity> mainActivityWeakReference=Application.mainActivity;
-		if(mainActivityWeakReference!=null)
-		{
-			@Nullable
-			final Resources resources=mainActivityWeakReference.get().getResources();
-			if(resources!=null)
-			{
-				imageWidth=resources.getDimensionPixelSize(R.dimen.imageHeight);
-			}
-		}
-		// TODO проверка на подсчёт
+		ImagesDownloader.context=context;
 		try
 		{
-			int cpuThreadsNum=0;
-			@NonNull
-			final File systemDir=new File("/sys/devices/system/cpu/");
-			@Nullable
-			final File[] files=systemDir.listFiles();
-			if(files!=null&&files.length!=0)
+			int cpuThreadsNum=SharedPreferences.getInt(context,SHARED_PREFERENCES_CPU_THREADS_NUM_KEY,0);
+			if(cpuThreadsNum==0)
 			{
-				for(final File file : files)
+				@NonNull
+				final File systemDir=new File("/sys/devices/system/cpu/");
+				@Nullable
+				final File[] files=systemDir.listFiles();
+				if(files!=null&&files.length!=0)
 				{
-					@NonNull
-					final String dir=file.getName();
-					if(dir.matches("cpu"+"[0-9]"))
+					for(final File file : files)
 					{
-						cpuThreadsNum++;
+						@NonNull
+						final String dir=file.getName();
+						if(dir.matches("cpu"+"[0-9]"))
+						{
+							cpuThreadsNum++;
+						}
 					}
 				}
+				final int maxThreadNum=cpuThreadsNum>2?4:2;
+				ImagesDownloader.maxThreadNum=maxThreadNum;
+				SharedPreferences.putInt(context,SHARED_PREFERENCES_CPU_THREADS_NUM_KEY,maxThreadNum);
 			}
-			maxThreadNum=cpuThreadsNum>2?4:2;
+			else
+			{
+				maxThreadNum=cpuThreadsNum;
+			}
 		}
 		catch(Exception e)
 		{
@@ -624,6 +616,8 @@ public final class ImagesDownloader
 			boolean isError=false;
 			try
 			{
+				@Nullable
+				final Context context=ImagesDownloader.context;
 				@NonNull
 				final URL url=new URL(IMAGES_URL);
 				@NonNull
@@ -672,19 +666,25 @@ public final class ImagesDownloader
 							{
 								@Nullable
 								final String fileName=Application.URLS_FILE_NAMES.get(urlToDelete);
-								DiskUtils.deleteImageFromDisk(fileName);
+								if(context!=null)
+								{
+									DiskUtils.deleteImageFromDisk(fileName,context);
+								}
 							}
 						}
 						try
 						{
-							@NonNull
-							final FileWriter fileWriter=new FileWriter(Application.linksFile);
-							for(final String string : serverURLS)
+							if(context!=null)
 							{
-								fileWriter.write(string+'\n');
+								@NonNull
+								final FileWriter fileWriter=new FileWriter((DiskUtils.getLinksFile(DiskUtils.getCacheDir(context))));
+								for(final String string : serverURLS)
+								{
+									fileWriter.write(string+'\n');
+								}
+								fileWriter.flush();
+								fileWriter.close();
 							}
-							fileWriter.flush();
-							fileWriter.close();
 						}
 						catch(Exception e)
 						{
@@ -692,11 +692,11 @@ public final class ImagesDownloader
 						}
 					}
 					@Nullable
-					final WeakReference<MainActivity> weakReference=Application.mainActivity;
-					if(showToast&&weakReference!=null)
+					final WeakReference<MainActivity> mainActivityWeakReference=Application.mainActivity;
+					if(showToast&&mainActivityWeakReference!=null)
 					{
 						@Nullable
-						final MainActivity mainActivity=weakReference.get();
+						final MainActivity mainActivity=mainActivityWeakReference.get();
 						if(mainActivity!=null)
 						{
 							@NonNull
@@ -725,11 +725,11 @@ public final class ImagesDownloader
 				e.printStackTrace();
 			}
 			@Nullable
-			final WeakReference<MainActivity> weakReference=Application.mainActivity;
-			if(isError&&showToast&&weakReference!=null)
+			final WeakReference<MainActivity> mainActivityWeakReference=Application.mainActivity;
+			if(isError&&showToast&&mainActivityWeakReference!=null)
 			{
 				@Nullable
-				final MainActivity mainActivity=weakReference.get();
+				final MainActivity mainActivity=mainActivityWeakReference.get();
 				if(mainActivity!=null)
 				{
 					//noinspection AnonymousInnerClassMayBeStatic

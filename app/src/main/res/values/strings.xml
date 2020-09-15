@@ -8,4 +8,19 @@
 	<string name="channel_name">Gallery channel</string>
 	<string name="channel_description">Gallery notification channel</string>
 	<string name="share_image">Поделиться</string>
+	<string name="dialog_button_ok">ОК</string>
+	<string name="dialog_button_delete">Удалить</string>
+	<string name="dialog_button_reload">Перезагрузить</string>
+	<string name="dialog_button_cancel">Отмена</string>
+	<string name="dialog_title_no_internet">Нет интернета</string>
+	<string name="dialog_title_loading">Загрузка</string>
+	<string name="dialog_title_error">Ошибка</string>
+	<string name="dialog_title_delete">Удалить картинку</string>
+	<string name="dialog_message_internet_error">Ошибка загрузки: \nНет подключения к интернету</string>
+	<string name="dialog_message_loading">Картинка загружается: \nПопробуйте позже</string>
+	<string name="dialog_message_no_internet">Нет подключения к интернету. \nВключите WI-FI или сотовую связь и попробуйте снова.</string>
+	<string name="dialog_message_unknown_error">Ошибка: \nПроизошла непредвиденная ошибка</string>
+	<string name="dialog_message_delete_image">Вы действительно хотите удалить эту картинку?</string>
+	<string name="dialog_message_image_is_in_gallery">Картинка уже есть в списке</string>
+	<string name="dialog_message_error">Ошибка: \n%1$s</string>
 </resources>

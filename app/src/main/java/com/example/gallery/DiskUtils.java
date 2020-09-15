@@ -13,47 +13,75 @@ import androidx.annotation.Nullable;
 
 public final class DiskUtils
 {
+	@NonNull
+	private static final String PREVIEWS="previews";
+	@NonNull
+	private static final String BYTES="bytes";
+	@NonNull
+	private static final String LINKS_FILE="links.txt";
+	@Nullable
+	private static File cacheDir;
+	@Nullable
+	private static File imagePreviewsDir;
+	@Nullable
+	private static File imagesBytesDir;
+	@Nullable
+	private static File linksFile;
+
 	private DiskUtils()
 	{
 	}
 
-	public static void addStringToLinksfile(@NonNull final String url)
+	public static void addStringToLinksfile(@NonNull final String url,@NonNull final Context context)
 	{
-		@Nullable
-		final File linksFile_=Application.linksFile;
-		if(linksFile_!=null)
+		@NonNull
+		final File linksFile_=getLinksFile(getCacheDir(context));
+		@NonNull
+		final ArrayList<String> LinksFileString=new ArrayList<>();
+		try
 		{
 			@NonNull
-			final ArrayList<String> LinksFileString=new ArrayList<>();
-			try
+			final BufferedReader bufferedReader=new BufferedReader(new FileReader(linksFile_));
+			String string;
+			while((string=bufferedReader.readLine())!=null)
 			{
-				@NonNull
-				final BufferedReader bufferedReader=new BufferedReader(new FileReader(linksFile_));
-				String string;
-				while((string=bufferedReader.readLine())!=null)
-				{
-					LinksFileString.add(string);
-				}
-				LinksFileString.add(url);
-				bufferedReader.close();
-				@NonNull
-				final BufferedWriter bufferedWriter=new BufferedWriter(new FileWriter(linksFile_));
-				for(final String str : LinksFileString)
-				{
-					bufferedWriter.write(str+'\n');
-				}
-				bufferedWriter.flush();
-				bufferedReader.close();
+				LinksFileString.add(string);
 			}
-			catch(Exception e)
+			LinksFileString.add(url);
+			bufferedReader.close();
+			@NonNull
+			final BufferedWriter bufferedWriter=new BufferedWriter(new FileWriter(linksFile_));
+			for(final String str : LinksFileString)
 			{
-				e.printStackTrace();
+				bufferedWriter.write(str+'\n');
 			}
-			ImagesAdapter.callNotifyDataSetChanged();
+			bufferedWriter.flush();
+			bufferedReader.close();
+		}
+		catch(Exception e)
+		{
+			e.printStackTrace();
+		}
+		ImagesAdapter.callNotifyDataSetChanged();
+	}
+
+	static void createFile(@NonNull final File file)
+	{
+		try
+		{
+			if(!file.exists())
+			{
+				//noinspection ResultOfMethodCallIgnored
+				file.createNewFile();
+			}
+		}
+		catch(Exception e)
+		{
+			e.printStackTrace();
 		}
 	}
 
-	static void deleteImageFromDisk(@Nullable final String fileName)
+	static void deleteImageFromDisk(@Nullable final String fileName,@NonNull final Context context)
 	{
 		if(fileName!=null)
 		{
@@ -61,7 +89,7 @@ public final class DiskUtils
 			{
 				int num=0;
 				@NonNull
-				final BufferedReader bufferedReader=new BufferedReader(new FileReader(Application.linksFile));
+				final BufferedReader bufferedReader=new BufferedReader(new FileReader(getLinksFile(getCacheDir(context))));
 				String string;
 				while((string=bufferedReader.readLine())!=null)
 				{
@@ -74,14 +102,14 @@ public final class DiskUtils
 				if(num>1)
 				{
 					@NonNull
-					final File fullImage=new File(Application.imagesBytesDir,fileName);
+					final File fullImage=new File(getImagesBytesDir(getCacheDir(context)),fileName);
 					if(fullImage.exists())
 					{
 						//noinspection ResultOfMethodCallIgnored
 						fullImage.delete();
 					}
 					@NonNull
-					final File preview=new File(Application.imagePreviewsDir,fileName);
+					final File preview=new File(getImagePreviewsDir(getCacheDir(context)),fileName);
 					if(preview.exists())
 					{
 						//noinspection ResultOfMethodCallIgnored
@@ -97,84 +125,87 @@ public final class DiskUtils
 		}
 	}
 
-	public static void initCacheDirs(@Nullable final Context context)
+	public static File getCacheDir(@NonNull final Context context)
 	{
-		if(context!=null)
+		@Nullable
+		File cacheDir=DiskUtils.cacheDir;
+		if(cacheDir!=null)
 		{
-			try
+			makeDir(cacheDir);
+			return cacheDir;
+		}
+		try
+		{
+			if(Environment.isExternalStorageEmulated()||!Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState())||(cacheDir=context.getExternalCacheDir())==null||!cacheDir.canWrite())
 			{
-				if(Environment.isExternalStorageEmulated()||!Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState())||(Application.cacheDir=context.getExternalCacheDir())==null||!Application.cacheDir.canWrite())
-				{
-					Application.cacheDir=context.getCacheDir();
-				}
+				cacheDir=context.getCacheDir();
 			}
-			catch(Throwable e)
-			{
-				Application.cacheDir=context.getCacheDir();
-			}
-			// TODO разбить на методы
-			@NonNull
-			final File cacheDir_=Application.cacheDir;
-			Application.imagePreviewsDir=new File(cacheDir_,"previews");
-			Application.imagesBytesDir=new File(cacheDir_,"bytes");
-			Application.textfilesDir=new File(cacheDir_,"textfiles");
-			Application.linksFile=new File(Application.textfilesDir,"links.txt");
-			try
-			{
-				if(!cacheDir_.exists())
-				{
-					//noinspection ResultOfMethodCallIgnored
-					cacheDir_.mkdirs();
-				}
-				@NonNull
-				final File imagePreviewsDir_=Application.imagePreviewsDir;
-				if(imagePreviewsDir_.exists())
-				{
-					//noinspection ResultOfMethodCallIgnored
-					imagePreviewsDir_.mkdirs();
-				}
-				@NonNull
-				final File imageBytesDir_=Application.imagesBytesDir;
-				if(!imageBytesDir_.exists())
-				{
-					//noinspection ResultOfMethodCallIgnored
-					imageBytesDir_.mkdirs();
-				}
-			}
-			catch(Exception e)
-			{
-				e.printStackTrace();
-			}
-			try
-			{
-				@NonNull
-				final File linksFile_=Application.linksFile;
-				if(!linksFile_.exists())
-				{
-					@NonNull
-					final File textfilesdir=new File(cacheDir_,"textfiles");
-					if(!textfilesdir.exists())
-					{
-						//noinspection ResultOfMethodCallIgnored
-						textfilesdir.mkdirs();
-					}
-					if(!linksFile_.exists())
-					{
-						//noinspection ResultOfMethodCallIgnored
-						linksFile_.createNewFile();
-					}
-				}
-			}
-			catch(Exception e)
-			{
-				e.printStackTrace();
-			}
+		}
+		catch(Throwable e)
+		{
+			cacheDir=context.getCacheDir();
+		}
+		makeDir(cacheDir);
+		DiskUtils.cacheDir=cacheDir;
+		return cacheDir;
+	}
+
+	public static File getImagePreviewsDir(@NonNull final File cacheDir)
+	{
+		@Nullable
+		File imagePreviewsDir=DiskUtils.imagePreviewsDir;
+		if(imagePreviewsDir!=null)
+		{
+			makeDir(imagePreviewsDir);
+			return imagePreviewsDir;
+		}
+		imagePreviewsDir=new File(cacheDir,PREVIEWS);
+		DiskUtils.imagePreviewsDir=imagePreviewsDir;
+		makeDir(imagePreviewsDir);
+		return imagePreviewsDir;
+	}
+
+	public static File getImagesBytesDir(@NonNull final File cacheDir)
+	{
+		@Nullable
+		File imageBytesDir=DiskUtils.imagesBytesDir;
+		if(imageBytesDir!=null)
+		{
+			makeDir(imageBytesDir);
+			return imageBytesDir;
+		}
+		imageBytesDir=new File(cacheDir,BYTES);
+		DiskUtils.imagesBytesDir=imageBytesDir;
+		makeDir(imageBytesDir);
+		return imageBytesDir;
+	}
+
+	public static File getLinksFile(@NonNull final File cacheDir)
+	{
+		@Nullable
+		File linksFile=DiskUtils.linksFile;
+		if(linksFile!=null)
+		{
+			createFile(linksFile);
+			return linksFile;
+		}
+		linksFile=new File(cacheDir,LINKS_FILE);
+		DiskUtils.linksFile=linksFile;
+		createFile(linksFile);
+		return linksFile;
+	}
+
+	static void makeDir(@NonNull final File dir)
+	{
+		if(!dir.exists())
+		{
+			//noinspection ResultOfMethodCallIgnored
+			dir.mkdirs();
 		}
 	}
 
-	static void optimizeDisk()
+	static void optimizeDisk(@NonNull final Context context)
 	{
-		// TODO определение папки
 		new Thread()
 		{
 			@Override
@@ -188,9 +219,9 @@ public final class DiskUtils
 					{
 						diskFiles.add(ImagesDownloader.urlToHashMD5(string));
 					}
-					@Nullable
-					final File imagesBytesDir_=Application.imagesBytesDir;
-					if(imagesBytesDir_!=null&&imagesBytesDir_.exists())
+					@NonNull
+					final File imagesBytesDir_=getImagesBytesDir(getCacheDir(context));
+					if(imagesBytesDir_.exists())
 					{
 						@NonNull
 						final String parentDir=imagesBytesDir_+"/";
@@ -204,7 +235,7 @@ public final class DiskUtils
 								final String fileName=file.toString().substring(parentDir.length());
 								if(!diskFiles.contains(fileName))
 								{
-									deleteImageFromDisk(fileName);
+									deleteImageFromDisk(fileName,context);
 								}
 							}
 						}
@@ -218,57 +249,69 @@ public final class DiskUtils
 		}.start();
 	}
 
-	public static void removeStringFromLinksfile(final int numToDelete)
+	public static void removeStringFromLinksfile(final int numToDelete,@NonNull final Context context)
 	{
 		@Nullable
-		final File linksFile_=Application.linksFile;
-		if(linksFile_!=null)
+		final File linksFile_=getLinksFile(getCacheDir(context));
+		@NonNull
+		final ArrayList<String> LinksFileString=new ArrayList<>();
+		try
 		{
 			@NonNull
-			final ArrayList<String> LinksFileString=new ArrayList<>();
-			try
+			final BufferedReader bufferedReader=new BufferedReader(new FileReader(linksFile_));
+			String string;
+			while((string=bufferedReader.readLine())!=null)
 			{
-				@NonNull
-				final BufferedReader bufferedReader=new BufferedReader(new FileReader(linksFile_));
-				String string;
-				while((string=bufferedReader.readLine())!=null)
+				if(!string.equals(Application.URLS_LIST.get(numToDelete)))
 				{
-					if(!string.equals(Application.URLS_LIST.get(numToDelete)))
-					{
-						LinksFileString.add(string);
-					}
+					LinksFileString.add(string);
 				}
-				bufferedReader.close();
-				@NonNull
-				final BufferedWriter bufferedWriter=new BufferedWriter(new FileWriter(linksFile_));
-				for(final String str : LinksFileString)
-				{
-					bufferedWriter.write(str+'\n');
-				}
-				bufferedWriter.flush();
-				bufferedReader.close();
 			}
-			catch(Exception e)
+			bufferedReader.close();
+			@NonNull
+			final BufferedWriter bufferedWriter=new BufferedWriter(new FileWriter(linksFile_));
+			for(final String str : LinksFileString)
 			{
-				e.printStackTrace();
+				bufferedWriter.write(str+'\n');
 			}
-			ImagesAdapter.callNotifyDataSetChanged();
+			bufferedWriter.flush();
+			bufferedReader.close();
 		}
+		catch(Exception e)
+		{
+			e.printStackTrace();
+		}
+		ImagesAdapter.callNotifyDataSetChanged();
 	}
 
-	public static void updateUrlsList()
+	public static File getImagePath(@Nullable final String url,@Nullable final File dir)
+	{
+		@Nullable
+		final String url_=url;
+		if(dir!=null&&url_!=null)
+		{
+			@NonNull
+			final String fileName=ImagesDownloader.urlToHashMD5(url_);
+			@NonNull
+			final File path=new File(dir,fileName);
+			return path;
+		}
+		return null;
+	}
+
+	public static void updateUrlsList(@NonNull final Context context)
 	{
 		try
 		{
 			Application.URLS_LIST.clear();
 			@NonNull
-			final BufferedReader bufferedReader=new BufferedReader(new FileReader(Application.linksFile));
+			final BufferedReader bufferedReader=new BufferedReader(new FileReader(getLinksFile(getCacheDir(context))));
 			@Nullable
 			String url;
 			while((url=bufferedReader.readLine())!=null)
 			{
 				Application.URLS_LIST.add(url);
-				Application.URLS_LINKS_STATUS.put(url,"progress");
+				Application.addUrlInUrlsStatusList(url,Application.PROGRESS);
 			}
 			bufferedReader.close();
 		}

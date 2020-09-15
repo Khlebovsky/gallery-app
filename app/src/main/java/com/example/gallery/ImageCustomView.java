@@ -69,7 +69,7 @@ public class ImageCustomView extends LinearLayout
 			final PhotoView photoView=photoViewWeakReference.get();
 			if(photoView!=null&&photoView.getScale() >= MIN_DRAG_ZOOM&&photoView.getScale()<=MAX_DRAG_ZOOM)
 			{
-				final int imageShiftThreshold_=imageShiftThreshold;
+				final int imageShiftThreshold=ImageCustomView.imageShiftThreshold;
 				final float currentImagePositionY=Math.abs(photoView.getY());
 				switch(motionEvent.getAction())
 				{
@@ -78,7 +78,7 @@ public class ImageCustomView extends LinearLayout
 						offsetDY=photoView.getY()-motionEvent.getRawY();
 						break;
 					case MotionEvent.ACTION_UP:
-						if(currentImagePositionY >= imageShiftThreshold_)
+						if(currentImagePositionY >= imageShiftThreshold)
 						{
 							FullImageActivity.closeActivity();
 							break;
@@ -103,7 +103,7 @@ public class ImageCustomView extends LinearLayout
 								photoView.setZoomable(false);
 							}
 							photoView.animate().y(motionEvent.getRawY()+offsetDY).setDuration(0).start();
-							if(currentImagePositionY >= imageShiftThreshold_)
+							if(currentImagePositionY >= imageShiftThreshold)
 							{
 								final float transparencyCoefficient=(float)(1-Math.sqrt(Math.abs(currentImagePositionY/1000)));
 								photoView.animate().alpha(transparencyCoefficient).setDuration(0).start();
