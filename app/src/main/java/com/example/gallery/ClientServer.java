@@ -114,6 +114,10 @@ public final class ClientServer
 		@Override
 		public void onResponse(@NonNull Call call,@NonNull Response response)
 		{
+			@Nullable
+			final Context context=ClientServer.context;
+			@NonNull
+			final String url=this.url;
 			if(context!=null)
 			{
 				DiskUtils.addStringToLinksfile(url,context);
@@ -146,10 +150,13 @@ public final class ClientServer
 		@Override
 		public void onResponse(@NonNull Call call,@NonNull Response response)
 		{
+			final int numToDelete=this.numToDelete;
 			@NonNull
 			final String urlToDelete=Application.URLS_LIST.get(numToDelete);
 			@NonNull
 			final String fileName=ImagesDownloader.urlToHashMD5(urlToDelete);
+			@Nullable
+			final Context context=ClientServer.context;
 			if(context!=null)
 			{
 				DiskUtils.removeStringFromLinksfile(numToDelete,context);

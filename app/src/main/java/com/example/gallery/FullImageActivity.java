@@ -41,6 +41,10 @@ public class FullImageActivity extends AppCompatActivity
 	@NonNull
 	public static final String INTENT_EXTRA_NAME_NUM="Num";
 	@Nullable
+	public static FullImageActivity fullImageActivity;
+	@Nullable
+	public static PhotoView photoView;
+	@Nullable
 	NotificationManagerCompat notificationManagerCompat;
 	boolean isFullScreen;
 	int num;
@@ -59,55 +63,55 @@ public class FullImageActivity extends AppCompatActivity
 	private static final String SHARE_INTENT_TYPE="text/plain";
 	private static final int INTENT_CHOOSER_API=23;
 	private static final int REQUEST_CODE=100;
+	private static final int CLOSE_ACTIVITY_DELAY=50;
 
 	public static void closeActivity()
 	{
 		@Nullable
-		final WeakReference<FullImageActivity> fullImageWeakReference=Application.fullImageActivity;
+		final PhotoView photoView=FullImageActivity.photoView;
 		@Nullable
-		final WeakReference<PhotoView> photoViewWeakReference=Application.photoView;
-		if(fullImageWeakReference!=null&&photoViewWeakReference!=null)
+		final FullImageActivity fullImageActivity=FullImageActivity.fullImageActivity;
+		if(photoView!=null&&fullImageActivity!=null)
 		{
-			@Nullable
-			final PhotoView photoView=photoViewWeakReference.get();
-			@Nullable
-			final FullImageActivity fullImageActivity=fullImageWeakReference.get();
-			if(photoView!=null&&fullImageActivity!=null)
+			photoView.animate().alpha(0).setDuration(50).start();
+			new Handler().postDelayed(new Runnable()
 			{
-				photoView.animate().alpha(0).setDuration(50).start();
-				new Handler().postDelayed(new Runnable()
+				@Override
+				public void run()
 				{
-					@Override
-					public void run()
-					{
-						fullImageActivity.finish();
-					}
-				},50);
-			}
+					fullImageActivity.finish();
+				}
+			},CLOSE_ACTIVITY_DELAY);
 		}
 	}
 
 	void createNotificationChannel()
 	{
-		@Nullable
-		final WeakReference<FullImageActivity> fullImageWeakReference=Application.fullImageActivity;
-		if(fullImageWeakReference!=null)
+		if(Build.VERSION.SDK_INT >= NOTIFICATION_CHANNEL_API)
 		{
-			@Nullable
-			final Resources resources=fullImageWeakReference.get().getResources();
-			if(Build.VERSION.SDK_INT >= NOTIFICATION_CHANNEL_API&&resources!=null)
+			@NonNull
+			final NotificationManager notificationManager=getSystemService(NotificationManager.class);
+			@NonNull
+			final Resources resources=getResources();
+			@NonNull
+			final CharSequence name=resources.getString(R.string.channel_name);
+			if(notificationManager.getNotificationChannel(name.toString())==null)
 			{
-				@NonNull
-				final CharSequence name=resources.getString(R.string.channel_name);
 				@NonNull
 				final String description=resources.getString(R.string.channel_description);
 				final int importance=NotificationManager.IMPORTANCE_DEFAULT;
 				@NonNull
-				final NotificationChannel channel=new NotificationChannel(resources.getString(R.string.channel_name),name,importance);
+				final NotificationChannel channel=new NotificationChannel(resources.getString(R.string.channel_id),name,importance);
+				notificationManager.getNotificationChannel(String.valueOf(name));
 				channel.setDescription(description);
-				@NonNull
-				final NotificationManager notificationManager=getSystemService(NotificationManager.class);
-				notificationManager.createNotificationChannel(channel);
+				try
+				{
+					notificationManager.createNotificationChannel(channel);
+				}
+				catch(Exception e)
+				{
+					e.printStackTrace();
+				}
 			}
 		}
 	}
@@ -145,9 +149,7 @@ public class FullImageActivity extends AppCompatActivity
 
 	Bitmap getNotificationLargeIcon()
 	{
-		@Nullable
-		final Bitmap bitmap=BitmapFactory.decodeFile(String.valueOf(DiskUtils.getImagePath(url,DiskUtils.getImagePreviewsDir(DiskUtils.getCacheDir(this)))));
-		return bitmap;
+		return BitmapFactory.decodeFile(String.valueOf(DiskUtils.getImagePath(url,DiskUtils.getImagePreviewsDir(DiskUtils.getCacheDir(this)))));
 	}
 
 	Intent getShareImageIntent()
@@ -180,7 +182,7 @@ public class FullImageActivity extends AppCompatActivity
 					shareIntentsList.add(intent);
 				}
 			}
-			resultIntent=Intent.createChooser(shareIntentsList.remove(0),"Выберите приложение");
+			resultIntent=Intent.createChooser(shareIntentsList.remove(0),getResources().getString(R.string.share_intent_title));
 			resultIntent.putExtra(Intent.EXTRA_ALTERNATE_INTENTS,shareIntentsList.toArray(new Parcelable[shareIntentsList.size()]));
 		}
 		else
@@ -214,12 +216,10 @@ public class FullImageActivity extends AppCompatActivity
 		}
 	}
 
-	@RequiresApi(api=Build.VERSION_CODES.P)
+	@RequiresApi(CUTOUT_API)
 	void initDisplayCutout()
 	{
-		@NonNull
-		final WindowManager.LayoutParams cutoutAttributes=getWindow().getAttributes();
-		cutoutAttributes.layoutInDisplayCutoutMode=WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+		getWindow().getAttributes().layoutInDisplayCutoutMode=WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
 	}
 
 	void initFlags()
@@ -227,32 +227,24 @@ public class FullImageActivity extends AppCompatActivity
 		if(Build.VERSION.SDK_INT >= FULL_SCREEN_API)
 		{
 			@NonNull
-			final View decorView=getWindow().getDecorView();
+			final Window window=getWindow();
+			@NonNull
+			final View decorView=window.getDecorView();
 			decorView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE|View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
 			if(Build.VERSION.SDK_INT >= STATUS_BAR_COLOR_API)
 			{
-				getWindow().setFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS,WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
-				@Nullable
-				final WeakReference<FullImageActivity> fullImageWeakReference=Application.fullImageActivity;
-				if(fullImageWeakReference!=null)
-				{
-					@Nullable
-					final Resources resources=fullImageWeakReference.get().getResources();
-					if(resources!=null)
-					{
-						getWindow().setStatusBarColor(resources.getColor(R.color.transparentStatusBarColor));
-					}
-				}
+				window.setFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS,WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+				window.setStatusBarColor(getResources().getColor(R.color.transparentStatusBarColor));
 			}
 		}
 	}
 
 	void initObjects()
 	{
+		fullImageActivity=this;
 		Application.fullImageActivity=new WeakReference<>(FullImageActivity.this);
 		@NonNull
 		final PhotoView photoView=findViewById(R.id.photo_view);
-		Application.photoView=new WeakReference<>(photoView);
 		if(Build.VERSION.SDK_INT >= FULL_SCREEN_API)
 		{
 			photoView.setOnClickListener(new View.OnClickListener()
@@ -273,6 +265,7 @@ public class FullImageActivity extends AppCompatActivity
 				}
 			});
 		}
+		FullImageActivity.photoView=photoView;
 	}
 
 	void initSettings()
@@ -381,32 +374,37 @@ public class FullImageActivity extends AppCompatActivity
 				if(fullImageWeakReference!=null)
 				{
 					@Nullable
-					final Resources resources=fullImageWeakReference.get().getResources();
-					if(resources!=null)
+					final FullImageActivity fullImageActivity=fullImageWeakReference.get();
+					if(fullImageActivity!=null)
 					{
-						@NonNull
-						final String smallText="Открыта картинка";
-						@NonNull
-						final String bigText="Открыта картинка: \n"+url;
-						@NonNull
-						final NotificationCompat.Builder builder=new NotificationCompat.Builder(FullImageActivity.this,resources.getString(R.string.channel_name));
-						builder.setSmallIcon(R.drawable.ic_notification_icon);
-						builder.setContentTitle(resources.getString(R.string.app_name));
-						builder.setContentText(smallText);
-						builder.setPriority(NotificationCompat.PRIORITY_DEFAULT);
-						builder.setColor(resources.getColor(R.color.colorPrimary));
-						builder.setStyle(new NotificationCompat.BigTextStyle().bigText(bigText));
-						builder.setLargeIcon(getNotificationLargeIcon());
-						builder.setContentIntent(getActionBackPendingIntent());
-						builder.setAutoCancel(false);
-						builder.setShowWhen(false);
-						builder.addAction(getActionOpen());
-						builder.addAction(getActionShare());
-						@NonNull
-						final Notification notification=builder.build();
-						createNotificationChannel();
-						notificationManagerCompat=NotificationManagerCompat.from(getApplicationContext());
-						notificationManagerCompat.notify(NOTIFY_ID,notification);
+						@Nullable
+						final Resources resources=fullImageActivity.getResources();
+						if(resources!=null)
+						{
+							@NonNull
+							final String smallText="Открыта картинка";
+							@NonNull
+							final String bigText="Открыта картинка: \n"+url;
+							@NonNull
+							final NotificationCompat.Builder builder=new NotificationCompat.Builder(fullImageActivity,resources.getString(R.string.channel_name));
+							builder.setSmallIcon(R.drawable.ic_notification_icon);
+							builder.setContentTitle(resources.getString(R.string.app_name));
+							builder.setContentText(smallText);
+							builder.setPriority(NotificationCompat.PRIORITY_DEFAULT);
+							builder.setColor(resources.getColor(R.color.colorPrimary));
+							builder.setStyle(new NotificationCompat.BigTextStyle().bigText(bigText));
+							builder.setLargeIcon(getNotificationLargeIcon());
+							builder.setContentIntent(getActionBackPendingIntent());
+							builder.setAutoCancel(false);
+							builder.setShowWhen(false);
+							builder.addAction(getActionOpen());
+							builder.addAction(getActionShare());
+							@NonNull
+							final Notification notification=builder.build();
+							createNotificationChannel();
+							notificationManagerCompat=NotificationManagerCompat.from(getApplicationContext());
+							notificationManagerCompat.notify(NOTIFY_ID,notification);
+						}
 					}
 				}
 			}
@@ -443,21 +441,16 @@ public class FullImageActivity extends AppCompatActivity
 	void showFullImage(@Nullable final File path)
 	{
 		@Nullable
-		final WeakReference<PhotoView> photoViewWeakReference=Application.photoView;
-		if(photoViewWeakReference!=null)
+		final PhotoView photoView=FullImageActivity.photoView;
+		if(path!=null&&photoView!=null)
 		{
-			@Nullable
-			final PhotoView photoView=photoViewWeakReference.get();
-			if(path!=null&&photoView!=null)
-			{
-				@NonNull
-				final BitmapWorkerTask task=new BitmapWorkerTask(photoView,String.valueOf(path));
-				task.execute(1);
-			}
-			else
-			{
-				showErrorAlertDialog("The requested picture does not exist");
-			}
+			@NonNull
+			final BitmapWorkerTask task=new BitmapWorkerTask(photoView,String.valueOf(path));
+			task.execute(1);
+		}
+		else
+		{
+			showErrorAlertDialog("The requested picture does not exist");
 		}
 	}
 

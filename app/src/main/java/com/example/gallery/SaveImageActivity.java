@@ -42,26 +42,16 @@ public class SaveImageActivity extends AppCompatActivity
 			{
 				url=imageUrl;
 				setTitle(imageUrl);
-				@Nullable
-				final WeakReference<SaveImageActivity> saveImageActivityWeakReference=Application.saveImageActivity;
-				if(saveImageActivityWeakReference!=null)
+				@NonNull
+				final Resources resources=getResources();
+				if(resources!=null)
 				{
-					@Nullable
-					final SaveImageActivity saveImageActivity=saveImageActivityWeakReference.get();
-					if(saveImageActivity!=null)
-					{
-						@Nullable
-						final Resources resources=saveImageActivity.getResources();
-						if(resources!=null)
-						{
-							final int size=resources.getDimensionPixelSize(R.dimen.preloaderSize);
-							imageView.setLayoutParams(new LinearLayout.LayoutParams(size,size));
-						}
-					}
-					imageView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
-					imageView.setImageResource(R.drawable.progress);
-					new ShowSavedImageThread().start();
+					final int size=resources.getDimensionPixelSize(R.dimen.preloaderSize);
+					imageView.setLayoutParams(new LinearLayout.LayoutParams(size,size));
 				}
+				imageView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+				imageView.setImageResource(R.drawable.progress);
+				new ShowSavedImageThread().start();
 			}
 			else
 			{
@@ -74,22 +64,16 @@ public class SaveImageActivity extends AppCompatActivity
 	void initObjects()
 	{
 		Application.saveImageActivity=new WeakReference<>(SaveImageActivity.this);
-		imageView=findViewById(R.id.share_image_view);
 		applyButton=findViewById(R.id.apply_button);
-		@Nullable
-		final ImageView imageView=this.imageView;
-		if(imageView!=null)
-		{
-			@Nullable
-			final Resources resources=getResources();
-			if(resources!=null)
-			{
-				final int size=resources.getDimensionPixelSize(R.dimen.preloaderSize);
-				imageView.setLayoutParams(new LinearLayout.LayoutParams(size,size));
-			}
-			imageView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
-			imageView.setImageResource(R.drawable.progress);
-		}
+		@NonNull
+		final ImageView imageView=findViewById(R.id.share_image_view);
+		@NonNull
+		final Resources resources=getResources();
+		final int size=resources.getDimensionPixelSize(R.dimen.preloaderSize);
+		imageView.setLayoutParams(new LinearLayout.LayoutParams(size,size));
+		imageView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+		imageView.setImageResource(R.drawable.progress);
+		this.imageView=imageView;
 	}
 
 	@Override
@@ -166,6 +150,8 @@ public class SaveImageActivity extends AppCompatActivity
 		});
 		@Nullable
 		final ImageButton applyButton_=applyButton;
+		@Nullable
+		final String url=this.url;
 		if(applyButton_!=null&&url!=null)
 		{
 			applyButton_.setOnClickListener(new View.OnClickListener()
@@ -280,6 +266,7 @@ public class SaveImageActivity extends AppCompatActivity
 			{
 				@NonNull
 				final BufferedReader bufferedReader=new BufferedReader(new FileReader(DiskUtils.getLinksFile(DiskUtils.getCacheDir(SaveImageActivity.this))));
+				@Nullable
 				String string;
 				while((string=bufferedReader.readLine())!=null)
 				{
@@ -296,8 +283,6 @@ public class SaveImageActivity extends AppCompatActivity
 			}
 			@Nullable
 			final ImageView imageView=SaveImageActivity.this.imageView;
-			@NonNull
-			final Context context=SaveImageActivity.this;
 			if(imageView!=null)
 			{
 				if(isImageInGallery)
@@ -321,11 +306,11 @@ public class SaveImageActivity extends AppCompatActivity
 						}
 					}
 					showWarningAlertDialog();
-					ImagesDownloader.getImageFromDiskToSaveScreen(url,imageView,context);
+					ImagesDownloader.getImageFromDiskToSaveScreen(url,imageView,getApplicationContext());
 				}
 				else if(url!=null)
 				{
-					ImagesDownloader.downloadImageToSaveScreen(url,imageView,context);
+					ImagesDownloader.downloadImageToSaveScreen(url,imageView);
 				}
 			}
 		}

@@ -5,8 +5,10 @@
 	<string name="dark_theme">Включить темную тему</string>
 	<string name="light_theme">Включить светлую тему</string>
 	<string name="delete_image">Удалить</string>
+	<string name="channel_id">Gallery</string>
 	<string name="channel_name">Gallery channel</string>
 	<string name="channel_description">Gallery notification channel</string>
+	<string name="share_intent_title">Выбрать приложение</string>
 	<string name="share_image">Поделиться</string>
 	<string name="dialog_button_ok">ОК</string>
 	<string name="dialog_button_delete">Удалить</string>

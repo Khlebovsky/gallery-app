@@ -3,6 +3,7 @@ package com.example.gallery;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.os.Message;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -13,6 +14,7 @@ import java.lang.ref.WeakReference;
 import java.net.URL;
 import java.security.MessageDigest;
 import java.util.ArrayList;
+import java.util.regex.Pattern;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import okhttp3.Call;
@@ -26,19 +28,21 @@ public final class ImagesDownloader
 	static final ArrayList<String> URLS_IN_PROGRESS=new ArrayList<>();
 	@Nullable
 	static Context context;
+	@NonNull
+	private static final String CPU_THREADS_NUM_CHECK_KEY="cpu[0-9]";
 	private static final int CONTROL_NUMBER_OF_BYTES=50000;
 	@NonNull
 	private static final String IMAGES_URL="https://khlebovsky.ru/images.txt";
 	private static final int ERROR_TIME_SLEEP=1500;
-	@NonNull
-	private static final String SHARED_PREFERENCES_CPU_THREADS_NUM_KEY="CpuThreadsNum";
 	private static int maxThreadNum=2;
+	@Nullable
+	private static String cpuCheckKeyString;
 
 	private ImagesDownloader()
 	{
 	}
 
-	static void downloadImageToSaveScreen(@NonNull final String url,@NonNull final ImageView imageView,@NonNull final Context context)
+	static void downloadImageToSaveScreen(@NonNull final String url,@NonNull final ImageView imageView)
 	{
 		new Thread()
 		{
@@ -67,7 +71,6 @@ public final class ImagesDownloader
 							}
 							@NonNull
 							final byte[] buffer=new byte[4096];
-							@NonNull
 							int bytes;
 							if(inputStream!=null)
 							{
@@ -80,9 +83,7 @@ public final class ImagesDownloader
 							final BitmapFactory.Options options=new BitmapFactory.Options();
 							options.inJustDecodeBounds=true;
 							BitmapFactory.decodeByteArray(byteArrayOutputStream.toByteArray(),0,byteArrayOutputStream.toByteArray().length,options);
-							@NonNull
 							final int originalBitmapWidth=options.outWidth;
-							@NonNull
 							final int originalBitmapHeight=options.outHeight;
 							if(originalBitmapWidth==-1)
 							{
@@ -98,24 +99,34 @@ public final class ImagesDownloader
 								final Bitmap originalBitmap=BitmapFactory.decodeByteArray(byteArrayOutputStream.toByteArray(),0,byteArrayOutputStream.toByteArray().length,bitmapOptions);
 								if(originalBitmap!=null)
 								{
-									//noinspection AnonymousInnerClassMayBeStatic
-									((SaveImageActivity)context).runOnUiThread(new Runnable()
+									@Nullable
+									final WeakReference<SaveImageActivity> saveImageActivityWeakReference=Application.saveImageActivity;
+									if(saveImageActivityWeakReference!=null)
 									{
-										@Override
-										public void run()
+										@Nullable
+										final SaveImageActivity saveImageActivity=saveImageActivityWeakReference.get();
+										if(saveImageActivity!=null)
 										{
-											try
+											//noinspection AnonymousInnerClassMayBeStatic
+											saveImageActivity.runOnUiThread(new Runnable()
 											{
-												imageView.setImageBitmap(originalBitmap);
-												imageView.setScaleType(ImageView.ScaleType.FIT_CENTER);
-												imageView.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
-											}
-											catch(Exception e)
-											{
-												SaveImageActivity.showSaveImageAlertDialog("Decoding error");
-											}
+												@Override
+												public void run()
+												{
+													try
+													{
+														imageView.setImageBitmap(originalBitmap);
+														imageView.setScaleType(ImageView.ScaleType.FIT_CENTER);
+														imageView.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
+													}
+													catch(Exception e)
+													{
+														SaveImageActivity.showSaveImageAlertDialog("Decoding error");
+													}
+												}
+											});
 										}
-									});
+									}
 								}
 								else
 								{
@@ -240,7 +251,6 @@ public final class ImagesDownloader
 										}
 										@NonNull
 										final byte[] buffer=new byte[4096];
-										@NonNull
 										int bytes;
 										if(inputStream!=null)
 										{
@@ -255,7 +265,6 @@ public final class ImagesDownloader
 														final BitmapFactory.Options options=new BitmapFactory.Options();
 														options.inJustDecodeBounds=true;
 														BitmapFactory.decodeByteArray(byteArrayOutputStream.toByteArray(),0,byteArrayOutputStream.toByteArray().length,options);
-														@NonNull
 														final int originalBitmapWidth=options.outWidth;
 														if(originalBitmapWidth==-1)
 														{
@@ -469,9 +478,7 @@ public final class ImagesDownloader
 						final BitmapFactory.Options options=new BitmapFactory.Options();
 						options.inJustDecodeBounds=true;
 						BitmapFactory.decodeFile(String.valueOf(path),options);
-						@NonNull
 						final int originalBitmapWidth=options.outWidth;
-						@NonNull
 						final int originalBitmapHeight=options.outHeight;
 						if(originalBitmapWidth==-1)
 						{
@@ -487,24 +494,34 @@ public final class ImagesDownloader
 							final Bitmap originalBitmap=BitmapFactory.decodeFile(String.valueOf(path),bitmapOptions);
 							if(originalBitmap!=null)
 							{
-								//noinspection AnonymousInnerClassMayBeStatic
-								((SaveImageActivity)context).runOnUiThread(new Runnable()
+								@Nullable
+								final WeakReference<SaveImageActivity> saveImageActivityWeakReference=Application.saveImageActivity;
+								if(saveImageActivityWeakReference!=null)
 								{
-									@Override
-									public void run()
+									@Nullable
+									final SaveImageActivity saveImageActivity=saveImageActivityWeakReference.get();
+									if(saveImageActivity!=null)
 									{
-										try
+										//noinspection AnonymousInnerClassMayBeStatic
+										saveImageActivity.runOnUiThread(new Runnable()
 										{
-											imageView.setImageBitmap(originalBitmap);
-											imageView.setScaleType(ImageView.ScaleType.FIT_CENTER);
-											imageView.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
-										}
-										catch(Exception e)
-										{
-											SaveImageActivity.showSaveImageAlertDialog("Decoding error");
-										}
+											@Override
+											public void run()
+											{
+												try
+												{
+													imageView.setImageBitmap(originalBitmap);
+													imageView.setScaleType(ImageView.ScaleType.FIT_CENTER);
+													imageView.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
+												}
+												catch(Exception e)
+												{
+													SaveImageActivity.showSaveImageAlertDialog("Decoding error");
+												}
+											}
+										});
 									}
-								});
+								}
 							}
 							else
 							{
@@ -541,40 +558,41 @@ public final class ImagesDownloader
 	public static void init(@NonNull final Context context)
 	{
 		ImagesDownloader.context=context;
+		initRegularExpressions();
 		try
 		{
-			int cpuThreadsNum=SharedPreferences.getInt(context,SHARED_PREFERENCES_CPU_THREADS_NUM_KEY,0);
-			if(cpuThreadsNum==0)
+			if(cpuCheckKeyString==null||cpuCheckKeyString.isEmpty())
 			{
-				@NonNull
-				final File systemDir=new File("/sys/devices/system/cpu/");
-				@Nullable
-				final File[] files=systemDir.listFiles();
-				if(files!=null&&files.length!=0)
+				initRegularExpressions();
+			}
+			int cpuThreadsNum=0;
+			@NonNull
+			final File systemDir=new File("/sys/devices/system/cpu/");
+			@Nullable
+			final File[] files=systemDir.listFiles();
+			if(files!=null&&files.length!=0)
+			{
+				for(final File file : files)
 				{
-					for(final File file : files)
+					if(file.getName().matches(cpuCheckKeyString))
 					{
-						@NonNull
-						final String dir=file.getName();
-						if(dir.matches("cpu"+"[0-9]"))
-						{
-							cpuThreadsNum++;
-						}
+						cpuThreadsNum++;
 					}
 				}
-				final int maxThreadNum=cpuThreadsNum>2?4:2;
-				ImagesDownloader.maxThreadNum=maxThreadNum;
-				SharedPreferences.putInt(context,SHARED_PREFERENCES_CPU_THREADS_NUM_KEY,maxThreadNum);
 			}
-			else
-			{
-				maxThreadNum=cpuThreadsNum;
-			}
+			ImagesDownloader.maxThreadNum=cpuThreadsNum>2?4:2;
 		}
 		catch(Exception e)
 		{
 			e.printStackTrace();
 		}
+	}
+
+	public static void initRegularExpressions()
+	{
+		@NonNull
+		final Pattern cpuCheckKeyPattern=Pattern.compile(CPU_THREADS_NUM_CHECK_KEY);
+		cpuCheckKeyString=cpuCheckKeyPattern.toString();
 	}
 
 	public static String urlToHashMD5(@NonNull final String url)
@@ -691,26 +709,13 @@ public final class ImagesDownloader
 							e.printStackTrace();
 						}
 					}
-					@Nullable
-					final WeakReference<MainActivity> mainActivityWeakReference=Application.mainActivity;
-					if(showToast&&mainActivityWeakReference!=null)
+					if(showToast)
 					{
-						@Nullable
-						final MainActivity mainActivity=mainActivityWeakReference.get();
-						if(mainActivity!=null)
-						{
-							@NonNull
-							final String updateResult=isUpdated?"Данные обновлены":"Обновлений не обнаружено";
-							//noinspection AnonymousInnerClassMayBeStatic
-							mainActivity.runOnUiThread(new Runnable()
-							{
-								@Override
-								public void run()
-								{
-									StyleableToast.makeText(mainActivity,updateResult,Toast.LENGTH_SHORT,R.style.ToastStyle).show();
-								}
-							});
-						}
+						@NonNull
+						final String updateResult=isUpdated?"Данные обновлены":"Обновлений не обнаружено";
+						@NonNull
+						final Message message=MainActivity.TOAST_HANDLER.obtainMessage(0,updateResult);
+						MainActivity.TOAST_HANDLER.sendMessage(message);
 					}
 				}
 				catch(Exception e)
@@ -724,24 +729,13 @@ public final class ImagesDownloader
 				isError=true;
 				e.printStackTrace();
 			}
-			@Nullable
-			final WeakReference<MainActivity> mainActivityWeakReference=Application.mainActivity;
-			if(isError&&showToast&&mainActivityWeakReference!=null)
+			if(isError&&showToast)
 			{
-				@Nullable
-				final MainActivity mainActivity=mainActivityWeakReference.get();
-				if(mainActivity!=null)
-				{
-					//noinspection AnonymousInnerClassMayBeStatic
-					mainActivity.runOnUiThread(new Runnable()
-					{
-						@Override
-						public void run()
-						{
-							StyleableToast.makeText(mainActivity,"Ошибка обновления данных",Toast.LENGTH_SHORT,R.style.ToastStyle).show();
-						}
-					});
-				}
+				@NonNull
+				final String error="Ошибка обновления данных";
+				@NonNull
+				final Message message=MainActivity.TOAST_HANDLER.obtainMessage(0,error);
+				MainActivity.TOAST_HANDLER.sendMessage(message);
 			}
 		}
 	}

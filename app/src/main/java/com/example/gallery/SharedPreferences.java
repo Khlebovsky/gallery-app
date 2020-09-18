@@ -21,11 +21,6 @@ public final class SharedPreferences
 		return getSharedPreferences(context).getBoolean(key,defaultValue);
 	}
 
-	public static int getInt(@NonNull final Context context,@NonNull final String key,final int defaultValue)
-	{
-		return getSharedPreferences(context).getInt(key,defaultValue);
-	}
-
 	public static android.content.SharedPreferences getSharedPreferences(@NonNull final Context context)
 	{
 		@Nullable
@@ -47,11 +42,6 @@ public final class SharedPreferences
 	public static void putBoolean(@NonNull final Context context,@NonNull final String key,final boolean value)
 	{
 		getSharedPreferences(context).edit().putBoolean(key,value).apply();
-	}
-
-	public static void putInt(@NonNull final Context context,@NonNull final String key,final int value)
-	{
-		getSharedPreferences(context).edit().putInt(key,value).apply();
 	}
 
 	public static void putString(@NonNull final Context context,@NonNull final String key,@NonNull final String value)

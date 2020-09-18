@@ -18,7 +18,6 @@ public final class Application
 	@NonNull
 	public static final HashMap<String,String> URLS_ERROR_LIST=new HashMap<>();
 	public static final int ACTION_DELAY_TIME=500;
-	public static final int CHECK_NETWORK_STATUS_DELAY_TIME=100;
 	@NonNull
 	public static final HashMap<String,String> URLS_FILE_NAMES=new HashMap<>();
 	public static final int MAX_BITMAP_SIZE=4096;
@@ -35,8 +34,6 @@ public final class Application
 	public static WeakReference<MainActivity> mainActivity;
 	@Nullable
 	public static WeakReference<FullImageActivity> fullImageActivity;
-	@Nullable
-	public static WeakReference<PhotoView> photoView;
 	public static int DOWNLOADING_REPEAT_NUM=3;
 	@Nullable
 	public static WeakReference<SaveImageActivity> saveImageActivity;
@@ -95,11 +92,6 @@ public final class Application
 			}
 			Application.hasThemeInit=true;
 		}
-	}
-
-	public static boolean isUrlInUrlsStatusList(@NonNull final String url)
-	{
-		return URLS_STATUS_LIST.containsKey(url);
 	}
 
 	public static void removeNoInternetUrlsFromUrlsStatusList()

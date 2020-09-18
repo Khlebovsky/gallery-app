@@ -10,13 +10,12 @@ import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import java.lang.ref.WeakReference;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 public class ImagesAdapter extends BaseAdapter
 {
-	@NonNull
-	static final GalleryHandler GALLERY_HANDLER=new GalleryHandler();
 	@NonNull
 	final LayoutInflater layoutInflater;
 	@NonNull
@@ -34,8 +33,8 @@ public class ImagesAdapter extends BaseAdapter
 	public static void callNotifyDataSetChanged()
 	{
 		@NonNull
-		final Message message=GALLERY_HANDLER.obtainMessage();
-		GALLERY_HANDLER.sendMessage(message);
+		final Message message=MainActivity.GALLERY_HANDLER.obtainMessage();
+		MainActivity.GALLERY_HANDLER.sendMessage(message);
 	}
 
 	@Override
@@ -57,84 +56,56 @@ public class ImagesAdapter extends BaseAdapter
 	}
 
 	@Override
-	public View getView(final int i,View view,ViewGroup viewGroup)
+	public View getView(final int position,View convertView,ViewGroup viewGroup)
 	{
-		@Nullable
+		@NonNull
 		final LinearLayout linearLayout;
-		@Nullable
+		@NonNull
 		final ImageView imageView;
 		@NonNull
 		final LayoutInflater layoutInflater=this.layoutInflater;
-		linearLayout=view==null?(LinearLayout)layoutInflater.inflate(R.layout.gridview_element,viewGroup,false):(LinearLayout)view;
-		if(linearLayout!=null)
+		linearLayout=convertView==null?(LinearLayout)layoutInflater.inflate(R.layout.gridview_element,viewGroup,false):(LinearLayout)convertView;
+		imageView=linearLayout.findViewById(R.id.gridview_image);
+		@NonNull
+		final String url=Application.URLS_LIST.get(position);
+		if(Application.NO_INTERNET.equals(Application.getUrlStatus(url)))
 		{
-			imageView=linearLayout.findViewById(R.id.gridview_image);
-			if(imageView!=null)
+			if(!LOADING_ERROR.equals(imageView.getTag()))
 			{
-				@NonNull
-				final String url=Application.URLS_LIST.get(i);
-				if(Application.NO_INTERNET.equals(Application.getUrlStatus(url)))
-				{
-					if(!LOADING_ERROR.equals(imageView.getTag()))
-					{
-						imageView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
-						imageView.setImageResource(R.drawable.ic_no_internet);
-						imageView.setTag(LOADING_ERROR);
-					}
-				}
-				else if(Application.URLS_ERROR_LIST.containsKey(url))
-				{
-					if(!ERROR.equals(imageView.getTag()))
-					{
-						imageView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
-						imageView.setImageResource(R.drawable.ic_error);
-						imageView.setTag(ERROR);
-						Application.addUrlInUrlsStatusList(url,ERROR);
-					}
-				}
-				else if(!url.equals(imageView.getTag()))
-				{
-					@Nullable
-					final Bitmap bitmap=ImagesDownloader.getImageBitmap(url);
-					if(bitmap!=null)
-					{
-						imageView.setScaleType(ImageView.ScaleType.FIT_CENTER);
-						imageView.setImageBitmap(bitmap);
-						imageView.setTag(url);
-						Application.removeUrlFromUrlsStatusList(url);
-					}
-					else if(!LOADING.equals(imageView.getTag()))
-					{
-						imageView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
-						imageView.setImageResource(R.drawable.ic_progress);
-						imageView.setTag(LOADING);
-						Application.addUrlInUrlsStatusList(url,LOADING);
-					}
-				}
+				imageView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+				imageView.setImageResource(R.drawable.ic_no_internet);
+				imageView.setTag(LOADING_ERROR);
+			}
+		}
+		else if(Application.URLS_ERROR_LIST.containsKey(url))
+		{
+			if(!ERROR.equals(imageView.getTag()))
+			{
+				imageView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+				imageView.setImageResource(R.drawable.ic_error);
+				imageView.setTag(ERROR);
+				Application.addUrlInUrlsStatusList(url,ERROR);
+			}
+		}
+		else if(!url.equals(imageView.getTag()))
+		{
+			@Nullable
+			final Bitmap bitmap=ImagesDownloader.getImageBitmap(url);
+			if(bitmap!=null)
+			{
+				imageView.setScaleType(ImageView.ScaleType.FIT_CENTER);
+				imageView.setImageBitmap(bitmap);
+				imageView.setTag(url);
+				Application.removeUrlFromUrlsStatusList(url);
+			}
+			else if(!LOADING.equals(imageView.getTag()))
+			{
+				imageView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+				imageView.setImageResource(R.drawable.ic_progress);
+				imageView.setTag(LOADING);
+				Application.addUrlInUrlsStatusList(url,LOADING);
 			}
 		}
 		return linearLayout;
-	}
-
-	static class GalleryHandler extends Handler
-	{
-		GalleryHandler()
-		{
-			super(Looper.getMainLooper());
-		}
-
-		@Override
-		public void handleMessage(@NonNull Message msg)
-		{
-			if(Application.mainActivity!=null)
-			{
-				@Nullable
-				final MainActivity mainActivity=Application.mainActivity.get();
-				if(mainActivity!=null)
-				{
-					mainActivity.updateAdapter();
-				}
-			}
-		}
 	}
 }

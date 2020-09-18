@@ -35,13 +35,13 @@ public final class DiskUtils
 	public static void addStringToLinksfile(@NonNull final String url,@NonNull final Context context)
 	{
 		@NonNull
-		final File linksFile_=getLinksFile(getCacheDir(context));
+		final File linksFile=getLinksFile(getCacheDir(context));
 		@NonNull
 		final ArrayList<String> LinksFileString=new ArrayList<>();
 		try
 		{
 			@NonNull
-			final BufferedReader bufferedReader=new BufferedReader(new FileReader(linksFile_));
+			final BufferedReader bufferedReader=new BufferedReader(new FileReader(linksFile));
 			String string;
 			while((string=bufferedReader.readLine())!=null)
 			{
@@ -50,7 +50,7 @@ public final class DiskUtils
 			LinksFileString.add(url);
 			bufferedReader.close();
 			@NonNull
-			final BufferedWriter bufferedWriter=new BufferedWriter(new FileWriter(linksFile_));
+			final BufferedWriter bufferedWriter=new BufferedWriter(new FileWriter(linksFile));
 			for(final String str : LinksFileString)
 			{
 				bufferedWriter.write(str+'\n');
@@ -62,7 +62,6 @@ public final class DiskUtils
 		{
 			e.printStackTrace();
 		}
-		ImagesAdapter.callNotifyDataSetChanged();
 	}
 
 	static void createFile(@NonNull final File file)
@@ -90,6 +89,7 @@ public final class DiskUtils
 				int num=0;
 				@NonNull
 				final BufferedReader bufferedReader=new BufferedReader(new FileReader(getLinksFile(getCacheDir(context))));
+				@Nullable
 				String string;
 				while((string=bufferedReader.readLine())!=null)
 				{
@@ -148,6 +148,19 @@ public final class DiskUtils
 		makeDir(cacheDir);
 		DiskUtils.cacheDir=cacheDir;
 		return cacheDir;
+	}
+
+	public static File getImagePath(@Nullable final String url,@NonNull final File dir)
+	{
+		if(url!=null)
+		{
+			@NonNull
+			final String fileName=ImagesDownloader.urlToHashMD5(url);
+			@NonNull
+			final File path=new File(dir,fileName);
+			return path;
+		}
+		return null;
 	}
 
 	public static File getImagePreviewsDir(@NonNull final File cacheDir)
@@ -220,13 +233,13 @@ public final class DiskUtils
 						diskFiles.add(ImagesDownloader.urlToHashMD5(string));
 					}
 					@NonNull
-					final File imagesBytesDir_=getImagesBytesDir(getCacheDir(context));
-					if(imagesBytesDir_.exists())
+					final File imagesBytesDir=getImagesBytesDir(getCacheDir(context));
+					if(imagesBytesDir.exists())
 					{
 						@NonNull
-						final String parentDir=imagesBytesDir_+"/";
+						final String parentDir=imagesBytesDir+"/";
 						@Nullable
-						final File[] files=imagesBytesDir_.listFiles();
+						final File[] files=imagesBytesDir.listFiles();
 						if(files!=null&&files.length!=0)
 						{
 							for(final File file : files)
@@ -252,13 +265,13 @@ public final class DiskUtils
 	public static void removeStringFromLinksfile(final int numToDelete,@NonNull final Context context)
 	{
 		@Nullable
-		final File linksFile_=getLinksFile(getCacheDir(context));
+		final File linksFile=getLinksFile(getCacheDir(context));
 		@NonNull
 		final ArrayList<String> LinksFileString=new ArrayList<>();
 		try
 		{
 			@NonNull
-			final BufferedReader bufferedReader=new BufferedReader(new FileReader(linksFile_));
+			final BufferedReader bufferedReader=new BufferedReader(new FileReader(linksFile));
 			String string;
 			while((string=bufferedReader.readLine())!=null)
 			{
@@ -269,7 +282,7 @@ public final class DiskUtils
 			}
 			bufferedReader.close();
 			@NonNull
-			final BufferedWriter bufferedWriter=new BufferedWriter(new FileWriter(linksFile_));
+			final BufferedWriter bufferedWriter=new BufferedWriter(new FileWriter(linksFile));
 			for(final String str : LinksFileString)
 			{
 				bufferedWriter.write(str+'\n');
@@ -281,22 +294,6 @@ public final class DiskUtils
 		{
 			e.printStackTrace();
 		}
-		ImagesAdapter.callNotifyDataSetChanged();
-	}
-
-	public static File getImagePath(@Nullable final String url,@Nullable final File dir)
-	{
-		@Nullable
-		final String url_=url;
-		if(dir!=null&&url_!=null)
-		{
-			@NonNull
-			final String fileName=ImagesDownloader.urlToHashMD5(url_);
-			@NonNull
-			final File path=new File(dir,fileName);
-			return path;
-		}
-		return null;
 	}
 
 	public static void updateUrlsList(@NonNull final Context context)

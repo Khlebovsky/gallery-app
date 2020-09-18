@@ -18,12 +18,13 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.GridView;
+import android.widget.Toast;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import com.muddzdev.styleabletoast.StyleableToast;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Type;
 import java.util.HashMap;
-import java.util.Map;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
@@ -33,9 +34,13 @@ import androidx.appcompat.app.AppCompatDelegate;
 
 public class MainActivity extends AppCompatActivity implements AdapterView.OnItemClickListener
 {
+	@NonNull
+	public static final GalleryHandler GALLERY_HANDLER=new GalleryHandler();
+	@NonNull
+	public static final ToastHandler TOAST_HANDLER=new ToastHandler();
 	int width;
 	int height;
-	float imageWidth;
+	int imageWidth;
 	boolean hasUpdatesChecked;
 	@Nullable
 	ImagesAdapter imagesAdapter;
@@ -50,26 +55,35 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 	private static final String SHARED_PREFERENCES_ERROR_LIST_KEY="LinksStatusJson";
 	@NonNull
 	private static final String SHARED_PREFERENCES_NIGHT_MODE_KEY="isNightMode";
+	private static final int CHECK_NETWORK_STATUS_DELAY_TIME=100;
+	@NonNull
+	private static final Handler handler=new Handler();
 
 	@RequiresApi(Application.NIGHT_MODE_API)
 	void changeTheme()
 	{
 		final int currentTheme=AppCompatDelegate.getDefaultNightMode();
-		final int theme=currentTheme==AppCompatDelegate.MODE_NIGHT_YES?AppCompatDelegate.MODE_NIGHT_NO:AppCompatDelegate.MODE_NIGHT_YES;
-		AppCompatDelegate.setDefaultNightMode(theme);
+		if(currentTheme==AppCompatDelegate.MODE_NIGHT_YES)
+		{
+			AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
+			SharedPreferences.putBoolean(getApplicationContext(),SHARED_PREFERENCES_NIGHT_MODE_KEY,false);
+		}
+		else
+		{
+			AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
+			SharedPreferences.putBoolean(getApplicationContext(),SHARED_PREFERENCES_NIGHT_MODE_KEY,true);
+		}
 		recreate();
-		final boolean isNightMode=theme==AppCompatDelegate.MODE_NIGHT_YES;
-		SharedPreferences.putBoolean(getApplicationContext(),SHARED_PREFERENCES_NIGHT_MODE_KEY,isNightMode);
 	}
 
 	void checkNetworkStatus()
 	{
-		new Handler().postDelayed(new Runnable()
+		handler.postDelayed(new Runnable()
 		{
 			@Override
 			public void run()
 			{
-				if(isInternetConnected(Application.getConnectivityManager(getApplicationContext())))
+				if(isInternetConnected())
 				{
 					Application.isInternetAvaliable=true;
 					Application.removeNoInternetUrlsFromUrlsStatusList();
@@ -81,7 +95,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 					Application.isInternetAvaliable=false;
 				}
 			}
-		},Application.CHECK_NETWORK_STATUS_DELAY_TIME);
+		},CHECK_NETWORK_STATUS_DELAY_TIME);
 	}
 
 	void checkUpdates(final boolean showToast)
@@ -102,7 +116,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 		{
 			@Nullable
 			final String string=SharedPreferences.getString(getApplicationContext(),SHARED_PREFERENCES_ERROR_LIST_KEY,null);
-			if(string!=null)
+			if(string!=null&&!string.isEmpty())
 			{
 				//noinspection AnonymousInnerClassMayBeStatic
 				@NonNull
@@ -113,13 +127,9 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 				final Gson gson=new Gson();
 				@Nullable
 				final HashMap<String,String> TEMP=gson.fromJson(string,type);
-				if(TEMP!=null&&!TEMP.isEmpty())
+				if(TEMP!=null)
 				{
-					//noinspection rawtypes
-					for(final Map.Entry entry : TEMP.entrySet())
-					{
-						Application.URLS_ERROR_LIST.put(entry.getKey().toString(),entry.getValue().toString());
-					}
+					Application.URLS_ERROR_LIST.putAll(TEMP);
 				}
 			}
 		}
@@ -131,7 +141,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
 	int getGridViewColumnsNum()
 	{
-		return getResources().getConfiguration().orientation==Configuration.ORIENTATION_PORTRAIT?(int)(width/imageWidth):(int)(height/imageWidth);
+		return getResources().getConfiguration().orientation==Configuration.ORIENTATION_PORTRAIT?(width/imageWidth):(height/imageWidth);
 	}
 
 	int getQuantityItemsOnScreen()
@@ -142,25 +152,14 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 		if(getResources().getConfiguration().orientation==Configuration.ORIENTATION_PORTRAIT)
 		{
 			numInWidth=(int)(width/imageWidth);
-			numInHeight=(int)(height/imageWidth);
+			numInHeight=(int)(height/imageWidth)+2;
 		}
 		else
 		{
 			numInWidth=(int)(height/imageWidth);
-			numInHeight=(int)(width/imageWidth);
+			numInHeight=(int)(width/imageWidth)+1;
 		}
-		int quantity=numInWidth*numInHeight;
-		@NonNull
-		final Resources resources=getResources();
-		if(resources!=null)
-		{
-			quantity+=resources.getConfiguration().orientation==Configuration.ORIENTATION_PORTRAIT?numInWidth<<1:numInWidth;
-		}
-		else
-		{
-			quantity+=numInWidth<<1;
-		}
-		return quantity;
+		return numInWidth*numInHeight;
 	}
 
 	void initGridView()
@@ -186,30 +185,47 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 		final Resources resources=getResources();
 		setTitle(resources.getString(R.string.app_name));
 		imageWidth=resources.getDimensionPixelSize(R.dimen.imageSize);
-		Application.isInternetAvaliable=isInternetConnected(Application.getConnectivityManager(this));
+		Application.isInternetAvaliable=isInternetConnected();
+		initScreenSize();
+	}
+
+	@SuppressWarnings("SuspiciousNameCombination")
+	void initScreenSize()
+	{
 		@NonNull
 		final Display display=getWindowManager().getDefaultDisplay();
 		@NonNull
 		final Point size=new Point();
 		display.getSize(size);
-		width=size.x;
-		height=size.y;
+		final int screenWidth=size.x;
+		final int screenHeight=size.y;
+		if(screenWidth>screenHeight)
+		{
+			width=screenHeight;
+			height=screenWidth;
+		}
+		else
+		{
+			width=screenWidth;
+			height=screenHeight;
+		}
 	}
 
-	static boolean isInternetConnected(@NonNull final ConnectivityManager connectivityManager)
+	boolean isInternetConnected()
 	{
 		try
 		{
+			@NonNull
+			final ConnectivityManager connectivityManager=Application.getConnectivityManager(getApplicationContext());
 			@Nullable
 			final NetworkInfo wifiInfo=connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
-			@NonNull
-			final boolean wifiConnected=(wifiInfo!=null?wifiInfo.getState():null)==NetworkInfo.State.CONNECTED;
+			if(wifiInfo!=null&&wifiInfo.getState()==NetworkInfo.State.CONNECTED)
+			{
+				return true;
+			}
 			@Nullable
 			final NetworkInfo mobileInfo=connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_MOBILE);
-			@NonNull
-			final boolean mobileConnected=(mobileInfo!=null?mobileInfo.getState():null)==NetworkInfo.State.CONNECTED;
-			Log.d("123",String.valueOf(wifiConnected||mobileConnected));
-			return wifiConnected||mobileConnected;
+			return (mobileInfo!=null?mobileInfo.getState():null)==NetworkInfo.State.CONNECTED;
 		}
 		catch(Exception e)
 		{
@@ -221,17 +237,24 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 	@Override
 	public void onConfigurationChanged(@NonNull Configuration newConfig)
 	{
-		// TODO логика сохранения прокрутки
 		super.onConfigurationChanged(newConfig);
 		LruMemoryCache.resizeMemoryCache(getQuantityItemsOnScreen());
 		@Nullable
 		final GridView gridView=this.gridView;
 		if(gridView!=null)
 		{
-			final int firstVisiblePosition=gridView.getFirstVisiblePosition();
-			gridView.setColumnWidth((int)imageWidth);
+			@Nullable
+			final Parcelable gridViewState=gridView.onSaveInstanceState();
+			final int position=gridView.getFirstVisiblePosition();
 			gridView.setNumColumns(getGridViewColumnsNum());
-			gridView.setSelection(firstVisiblePosition);
+			if(gridViewState!=null)
+			{
+				gridView.onRestoreInstanceState(gridViewState);
+			}
+			else
+			{
+				gridView.setSelection(position);
+			}
 		}
 	}
 
@@ -243,7 +266,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 		initObjects();
-		registerNetworkStateChecker(Application.getConnectivityManager(this));
+		registerNetworkStateChecker();
 		getErrorListFromSharedPrefs();
 		ConnectionSettings.initGooglePlayServices(this);
 		DiskUtils.updateUrlsList(this);
@@ -252,7 +275,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 		LruMemoryCache.initMemoryCache(getQuantityItemsOnScreen());
 		ClientServer.init(this);
 		initGridView();
-		if(isInternetConnected(Application.getConnectivityManager(this)))
+		if(isInternetConnected())
 		{
 			if(!hasUpdatesChecked)
 			{
@@ -284,7 +307,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 	protected void onDestroy()
 	{
 		super.onDestroy();
-		unregisterNetworkStateChecker(Application.getConnectivityManager(this));
+		unregisterNetworkStateChecker();
 		saveErrorList();
 	}
 
@@ -297,10 +320,10 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 		final String url=Application.URLS_LIST.get(position);
 		if(url!=null)
 		{
-			if(Application.isUrlInUrlsStatusList(url))
+			@Nullable
+			final String status=Application.getUrlStatus(url);
+			if(status!=null)
 			{
-				@Nullable
-				final String status=Application.getUrlStatus(url);
 				@NonNull
 				final AlertDialog.Builder builder=Application.getAlertDialogBuilder(this);
 				if(Application.NO_INTERNET.equals(status))
@@ -317,8 +340,15 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 				{
 					@Nullable
 					final String error=(Application.URLS_ERROR_LIST.get(url));
+					if(error!=null)
+					{
+						builder.setMessage(resources.getString(R.string.dialog_message_error,error));
+					}
+					else
+					{
+						builder.setMessage(resources.getString(R.string.dialog_message_unknown_error));
+					}
 					builder.setTitle(resources.getString(R.string.dialog_title_error));
-					builder.setMessage(resources.getString(R.string.dialog_message_error,error));
 					builder.setNegativeButton(resources.getString(R.string.dialog_button_delete),new ErrorLinksAlertDialogOnClickListener(position));
 					builder.setNeutralButton(resources.getString(R.string.dialog_button_reload),new ErrorLinksAlertDialogOnClickListener(position));
 				}
@@ -328,7 +358,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 			else
 			{
 				@NonNull
-				final Intent intent=new Intent(MainActivity.this,FullImageActivity.class);
+				final Intent intent=new Intent(this,FullImageActivity.class);
 				intent.putExtra(FullImageActivity.INTENT_EXTRA_NAME_URL,url);
 				intent.putExtra(FullImageActivity.INTENT_EXTRA_NAME_NUM,position);
 				try
@@ -362,7 +392,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 				reloadErrorLinks();
 				return true;
 			case R.id.changeTheme:
-				new Handler().postDelayed(new Runnable()
+				handler.postDelayed(new Runnable()
 				{
 					@Override
 					public void run()
@@ -379,7 +409,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 	protected void onPause()
 	{
 		super.onPause();
-		unregisterNetworkStateChecker(Application.getConnectivityManager(this));
+		unregisterNetworkStateChecker();
 		saveErrorList();
 	}
 
@@ -387,10 +417,10 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 	protected void onResume()
 	{
 		super.onResume();
-		registerNetworkStateChecker(Application.getConnectivityManager(this));
+		registerNetworkStateChecker();
 	}
 
-	void registerNetworkStateChecker(@NonNull final ConnectivityManager connectivityManager)
+	void registerNetworkStateChecker()
 	{
 		try
 		{
@@ -402,7 +432,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 				{
 					networkCallback=new NetworkCallback();
 				}
-				connectivityManager.registerDefaultNetworkCallback(networkCallback);
+				Application.getConnectivityManager(getApplicationContext()).registerDefaultNetworkCallback(networkCallback);
 				this.networkCallback=networkCallback;
 			}
 			else
@@ -452,7 +482,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 		builder.show();
 	}
 
-	void unregisterNetworkStateChecker(@NonNull final ConnectivityManager connectivityManager)
+	void unregisterNetworkStateChecker()
 	{
 		try
 		{
@@ -462,7 +492,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 				final NetworkCallback networkCallback=this.networkCallback;
 				if(networkCallback!=null)
 				{
-					connectivityManager.unregisterNetworkCallback(networkCallback);
+					Application.getConnectivityManager(getApplicationContext()).unregisterNetworkCallback(networkCallback);
 				}
 			}
 			else
@@ -483,6 +513,8 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
 	void updateAdapter()
 	{
+		@Nullable
+		final ImagesAdapter imagesAdapter=this.imagesAdapter;
 		if(imagesAdapter!=null)
 		{
 			imagesAdapter.notifyDataSetChanged();
@@ -527,7 +559,31 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 		}
 	}
 
-	@RequiresApi(api=Build.VERSION_CODES.LOLLIPOP)
+	static class GalleryHandler extends Handler
+	{
+		GalleryHandler()
+		{
+			super(Looper.getMainLooper());
+		}
+
+		@Override
+		public void handleMessage(@NonNull Message msg)
+		{
+			@Nullable
+			final WeakReference<MainActivity> mainActivityWeakReference=Application.mainActivity;
+			if(mainActivityWeakReference!=null)
+			{
+				@Nullable
+				final MainActivity mainActivity=mainActivityWeakReference.get();
+				if(mainActivity!=null)
+				{
+					mainActivity.updateAdapter();
+				}
+			}
+		}
+	}
+
+	@RequiresApi(NETWORK_CALLBACK_API)
 	class NetworkCallback extends ConnectivityManager.NetworkCallback
 	{
 		@Override
@@ -540,6 +596,36 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 		public void onLost(@NonNull Network network)
 		{
 			checkNetworkStatus();
+		}
+	}
+
+	static class ToastHandler extends Handler
+	{
+		ToastHandler()
+		{
+			super(Looper.getMainLooper());
+		}
+
+		@Override
+		public void handleMessage(@NonNull Message msg)
+		{
+			super.handleMessage(msg);
+			@Nullable
+			final String message=(String)msg.obj;
+			if(message!=null&&!message.isEmpty())
+			{
+				@Nullable
+				final WeakReference<MainActivity> mainActivityWeakReference=Application.mainActivity;
+				if(mainActivityWeakReference!=null)
+				{
+					@Nullable
+					final MainActivity mainActivity=mainActivityWeakReference.get();
+					if(mainActivity!=null)
+					{
+						StyleableToast.makeText(mainActivity,message,Toast.LENGTH_SHORT,R.style.ToastStyle).show();
+					}
+				}
+			}
 		}
 	}
 }
