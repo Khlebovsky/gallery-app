@@ -1,8 +1,6 @@
 package com.example.gallery;
 
 import android.graphics.Bitmap;
-import android.os.Handler;
-import android.os.Looper;
 import android.os.Message;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -10,7 +8,6 @@ import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import java.lang.ref.WeakReference;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
@@ -68,7 +65,7 @@ public class ImagesAdapter extends BaseAdapter
 		imageView=linearLayout.findViewById(R.id.gridview_image);
 		@NonNull
 		final String url=Application.URLS_LIST.get(position);
-		if(Application.NO_INTERNET.equals(Application.getUrlStatus(url)))
+		if(Application.NO_INTERNET_TAG.equals(Application.getUrlStatus(url)))
 		{
 			if(!LOADING_ERROR.equals(imageView.getTag()))
 			{

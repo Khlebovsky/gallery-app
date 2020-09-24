@@ -30,7 +30,7 @@ public class SaveImageActivity extends AppCompatActivity
 	@NonNull
 	private static final String MIMETYPE_TEXT="text/plain";
 
-	void handleSendText(@NonNull Intent intent)
+	void handleSendText(@NonNull final Intent intent)
 	{
 		@Nullable
 		final String imageUrl=intent.getStringExtra(Intent.EXTRA_TEXT);
@@ -44,11 +44,8 @@ public class SaveImageActivity extends AppCompatActivity
 				setTitle(imageUrl);
 				@NonNull
 				final Resources resources=getResources();
-				if(resources!=null)
-				{
-					final int size=resources.getDimensionPixelSize(R.dimen.preloaderSize);
-					imageView.setLayoutParams(new LinearLayout.LayoutParams(size,size));
-				}
+				final int size=resources.getDimensionPixelSize(R.dimen.preloaderSize);
+				imageView.setLayoutParams(new LinearLayout.LayoutParams(size,size));
 				imageView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
 				imageView.setImageResource(R.drawable.progress);
 				new ShowSavedImageThread().start();
@@ -63,13 +60,11 @@ public class SaveImageActivity extends AppCompatActivity
 
 	void initObjects()
 	{
-		Application.saveImageActivity=new WeakReference<>(SaveImageActivity.this);
+		Application.saveImageActivity=new WeakReference<>(this);
 		applyButton=findViewById(R.id.apply_button);
 		@NonNull
 		final ImageView imageView=findViewById(R.id.share_image_view);
-		@NonNull
-		final Resources resources=getResources();
-		final int size=resources.getDimensionPixelSize(R.dimen.preloaderSize);
+		final int size=getResources().getDimensionPixelSize(R.dimen.preloaderSize);
 		imageView.setLayoutParams(new LinearLayout.LayoutParams(size,size));
 		imageView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
 		imageView.setImageResource(R.drawable.progress);
@@ -94,12 +89,12 @@ public class SaveImageActivity extends AppCompatActivity
 		if(Intent.ACTION_SEND.equals(action)&&MIMETYPE_TEXT.equals(type))
 		{
 			handleSendText(intent);
+			setOnClickListeners();
 		}
 		else
 		{
 			showSaveImageAlertDialog("The image is not transferred or this link format is not supported");
 		}
-		setOnClickListeners();
 	}
 
 	@Override
@@ -149,12 +144,12 @@ public class SaveImageActivity extends AppCompatActivity
 			}
 		});
 		@Nullable
-		final ImageButton applyButton_=applyButton;
+		final ImageButton applyButton=this.applyButton;
 		@Nullable
 		final String url=this.url;
-		if(applyButton_!=null&&url!=null)
+		if(applyButton!=null&&url!=null)
 		{
-			applyButton_.setOnClickListener(new View.OnClickListener()
+			applyButton.setOnClickListener(new View.OnClickListener()
 			{
 				@Override
 				public void onClick(View view)
@@ -283,7 +278,9 @@ public class SaveImageActivity extends AppCompatActivity
 			}
 			@Nullable
 			final ImageView imageView=SaveImageActivity.this.imageView;
-			if(imageView!=null)
+			@Nullable
+			final String url=SaveImageActivity.this.url;
+			if(imageView!=null&&url!=null)
 			{
 				if(isImageInGallery)
 				{
@@ -308,7 +305,7 @@ public class SaveImageActivity extends AppCompatActivity
 					showWarningAlertDialog();
 					ImagesDownloader.getImageFromDiskToSaveScreen(url,imageView,getApplicationContext());
 				}
-				else if(url!=null)
+				else
 				{
 					ImagesDownloader.downloadImageToSaveScreen(url,imageView);
 				}

@@ -25,9 +25,9 @@ public final class Application
 	public static final ArrayList<String> URLS_LIST=new ArrayList<>();
 	public static final int NIGHT_MODE_API=17;
 	@NonNull
-	public static final String PROGRESS="progress";
+	public static final String PROGRESS_TAG="progress";
 	@NonNull
-	public static final String NO_INTERNET="no internet";
+	public static final String NO_INTERNET_TAG="no internet";
 	public static boolean isInternetAvaliable;
 	public static boolean hasThemeInit;
 	@Nullable
@@ -37,6 +37,8 @@ public final class Application
 	public static int DOWNLOADING_REPEAT_NUM=3;
 	@Nullable
 	public static WeakReference<SaveImageActivity> saveImageActivity;
+	@NonNull
+	private static final String SHARED_PREFS_NIGHT_MODE_KEY="isNightMode";
 	@NonNull
 	private static final HashMap<String,String> URLS_STATUS_LIST=new HashMap<>();
 	@Nullable
@@ -78,11 +80,11 @@ public final class Application
 
 	public static void initTheme(@NonNull final Context context)
 	{
-		if(!Application.hasThemeInit&&Build.VERSION.SDK_INT >= NIGHT_MODE_API)
+		if(!hasThemeInit&&Build.VERSION.SDK_INT >= NIGHT_MODE_API)
 		{
 			try
 			{
-				final boolean isNightMode=SharedPreferences.getBoolean(context,"isNightMode",false);
+				final boolean isNightMode=SharedPreferences.getBoolean(context,SHARED_PREFS_NIGHT_MODE_KEY,false);
 				final int theme=isNightMode?AppCompatDelegate.MODE_NIGHT_YES:AppCompatDelegate.MODE_NIGHT_NO;
 				AppCompatDelegate.setDefaultNightMode(theme);
 			}
@@ -90,7 +92,7 @@ public final class Application
 			{
 				e.printStackTrace();
 			}
-			Application.hasThemeInit=true;
+			hasThemeInit=true;
 		}
 	}
 
@@ -98,7 +100,7 @@ public final class Application
 	{
 		for(final String url : URLS_LIST)
 		{
-			if(NO_INTERNET.equals(getUrlStatus(url)))
+			if(NO_INTERNET_TAG.equals(getUrlStatus(url)))
 			{
 				removeUrlFromUrlsStatusList(url);
 			}

@@ -1,14 +1,13 @@
 package com.example.gallery;
 
 import android.content.Context;
+import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Message;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.Toast;
-import com.muddzdev.styleabletoast.StyleableToast;
 import java.io.*;
 import java.lang.ref.WeakReference;
 import java.net.URL;
@@ -69,11 +68,11 @@ public final class ImagesDownloader
 							{
 								inputStream=response.body().byteStream();
 							}
-							@NonNull
-							final byte[] buffer=new byte[4096];
-							int bytes;
 							if(inputStream!=null)
 							{
+								@NonNull
+								final byte[] buffer=new byte[4096];
+								int bytes;
 								while((bytes=inputStream.read(buffer))>0)
 								{
 									byteArrayOutputStream.write(buffer,0,bytes);
@@ -220,7 +219,7 @@ public final class ImagesDownloader
 						{
 							if(!Application.isInternetAvaliable)
 							{
-								Application.addUrlInUrlsStatusList(url,Application.NO_INTERNET);
+								Application.addUrlInUrlsStatusList(url,Application.NO_INTERNET_TAG);
 								break;
 							}
 							try
@@ -237,7 +236,7 @@ public final class ImagesDownloader
 								InputStream inputStream=null;
 								if(response.code()==200||response.code()==201)
 								{
-									if(Application.NO_INTERNET.equals(Application.getUrlStatus(url)))
+									if(Application.NO_INTERNET_TAG.equals(Application.getUrlStatus(url)))
 									{
 										Application.removeUrlFromUrlsStatusList(url);
 									}
@@ -249,11 +248,11 @@ public final class ImagesDownloader
 										{
 											inputStream=response.body().byteStream();
 										}
-										@NonNull
-										final byte[] buffer=new byte[4096];
-										int bytes;
 										if(inputStream!=null)
 										{
+											@NonNull
+											final byte[] buffer=new byte[4096];
+											int bytes;
 											while((bytes=inputStream.read(buffer))>0)
 											{
 												byteArrayOutputStream.write(buffer,0,bytes);
@@ -391,7 +390,7 @@ public final class ImagesDownloader
 							}
 							if(!Application.isInternetAvaliable)
 							{
-								Application.addUrlInUrlsStatusList(url,Application.NO_INTERNET);
+								Application.addUrlInUrlsStatusList(url,Application.NO_INTERNET_TAG);
 								break;
 							}
 							try
@@ -404,7 +403,7 @@ public final class ImagesDownloader
 							}
 							if(!Application.isInternetAvaliable)
 							{
-								Application.addUrlInUrlsStatusList(url,Application.NO_INTERNET);
+								Application.addUrlInUrlsStatusList(url,Application.NO_INTERNET_TAG);
 								break;
 							}
 							if(i==Application.DOWNLOADING_REPEAT_NUM-1&&status!=null&&exception!=null)
@@ -632,10 +631,16 @@ public final class ImagesDownloader
 		public void run()
 		{
 			boolean isError=false;
+			@Nullable
+			final Context context=ImagesDownloader.context;
+			@Nullable
+			Resources resources=null;
+			if(context!=null)
+			{
+				resources=context.getResources();
+			}
 			try
 			{
-				@Nullable
-				final Context context=ImagesDownloader.context;
 				@NonNull
 				final URL url=new URL(IMAGES_URL);
 				@NonNull
@@ -709,10 +714,10 @@ public final class ImagesDownloader
 							e.printStackTrace();
 						}
 					}
-					if(showToast)
+					if(showToast&&resources!=null)
 					{
 						@NonNull
-						final String updateResult=isUpdated?"Данные обновлены":"Обновлений не обнаружено";
+						final String updateResult=resources.getString(isUpdated?R.string.data_update_success:R.string.data_update_null);
 						@NonNull
 						final Message message=MainActivity.TOAST_HANDLER.obtainMessage(0,updateResult);
 						MainActivity.TOAST_HANDLER.sendMessage(message);
@@ -729,12 +734,10 @@ public final class ImagesDownloader
 				isError=true;
 				e.printStackTrace();
 			}
-			if(isError&&showToast)
+			if(isError&&showToast&&resources!=null)
 			{
 				@NonNull
-				final String error="Ошибка обновления данных";
-				@NonNull
-				final Message message=MainActivity.TOAST_HANDLER.obtainMessage(0,error);
+				final Message message=MainActivity.TOAST_HANDLER.obtainMessage(0,resources.getString(R.string.data_update_error));
 				MainActivity.TOAST_HANDLER.sendMessage(message);
 			}
 		}

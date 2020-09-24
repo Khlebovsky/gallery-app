@@ -1,21 +1,14 @@
 package com.example.gallery;
 
 import android.content.Context;
-import android.os.Handler;
-import android.os.Looper;
 import android.os.Message;
-import android.widget.Toast;
-import com.muddzdev.styleabletoast.StyleableToast;
 import java.io.*;
-import java.lang.ref.WeakReference;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import okhttp3.*;
 
 public final class ClientServer
 {
-	@NonNull
-	static final RequestHandler REQUEST_HANDLER=new RequestHandler();
 	@Nullable
 	static Context context;
 	@NonNull
@@ -28,8 +21,6 @@ public final class ClientServer
 	private static final String DELETE_TASK="Delete";
 	@NonNull
 	private static final String ADD_TASK="Add";
-	@NonNull
-	private static final String ERROR="error";
 
 	private ClientServer()
 	{
@@ -106,26 +97,31 @@ public final class ClientServer
 		@Override
 		public void onFailure(@NonNull Call call,@NonNull IOException e)
 		{
-			@NonNull
-			final Message message=REQUEST_HANDLER.obtainMessage(0,ERROR);
-			REQUEST_HANDLER.sendMessage(message);
+			if(context!=null)
+			{
+				@NonNull
+				final Message message=MainActivity.TOAST_HANDLER.obtainMessage(0,context.getString(R.string.image_add_error));
+				MainActivity.TOAST_HANDLER.sendMessage(message);
+			}
 		}
 
 		@Override
 		public void onResponse(@NonNull Call call,@NonNull Response response)
 		{
-			@Nullable
-			final Context context=ClientServer.context;
 			@NonNull
 			final String url=this.url;
+			Application.URLS_LIST.add(url);
+			@Nullable
+			final Context context=ClientServer.context;
 			if(context!=null)
 			{
 				DiskUtils.addStringToLinksfile(url,context);
+				@NonNull
+				final String stringMessage=context.getString(R.string.image_add_success,url);
+				@NonNull
+				final Message message=MainActivity.TOAST_HANDLER.obtainMessage(0,stringMessage);
+				MainActivity.TOAST_HANDLER.sendMessage(message);
 			}
-			Application.URLS_LIST.add(url);
-			@NonNull
-			final Message message=REQUEST_HANDLER.obtainMessage(0,1,1,url);
-			REQUEST_HANDLER.sendMessage(message);
 			ImagesAdapter.callNotifyDataSetChanged();
 		}
 	}
@@ -142,9 +138,12 @@ public final class ClientServer
 		@Override
 		public void onFailure(@NonNull Call call,@NonNull IOException e)
 		{
-			@NonNull
-			final Message message=REQUEST_HANDLER.obtainMessage(0,ERROR);
-			REQUEST_HANDLER.sendMessage(message);
+			if(context!=null)
+			{
+				@NonNull
+				final Message message=MainActivity.TOAST_HANDLER.obtainMessage(0,context.getString(R.string.image_delete_error));
+				MainActivity.TOAST_HANDLER.sendMessage(message);
+			}
 		}
 
 		@Override
@@ -155,66 +154,22 @@ public final class ClientServer
 			final String urlToDelete=Application.URLS_LIST.get(numToDelete);
 			@NonNull
 			final String fileName=ImagesDownloader.urlToHashMD5(urlToDelete);
+			Application.URLS_FILE_NAMES.remove(urlToDelete);
+			Application.removeUrlFromUrlsStatusList(urlToDelete);
+			Application.URLS_LIST.remove(numToDelete);
 			@Nullable
 			final Context context=ClientServer.context;
 			if(context!=null)
 			{
 				DiskUtils.removeStringFromLinksfile(numToDelete,context);
 				DiskUtils.deleteImageFromDisk(fileName,context);
+				@NonNull
+				final String stringMessage=context.getString(R.string.image_delete_success,urlToDelete);
+				@NonNull
+				final Message message=MainActivity.TOAST_HANDLER.obtainMessage(0,stringMessage);
+				MainActivity.TOAST_HANDLER.sendMessage(message);
 			}
-			Application.URLS_FILE_NAMES.remove(urlToDelete);
-			Application.removeUrlFromUrlsStatusList(urlToDelete);
-			Application.URLS_LIST.remove(numToDelete);
-			@NonNull
-			final Message message=REQUEST_HANDLER.obtainMessage(0,2,2,urlToDelete);
-			REQUEST_HANDLER.sendMessage(message);
 			ImagesAdapter.callNotifyDataSetChanged();
-		}
-	}
-
-	static class RequestHandler extends Handler
-	{
-		RequestHandler()
-		{
-			super(Looper.getMainLooper());
-		}
-
-		@Override
-		public void handleMessage(@NonNull Message msg)
-		{
-			super.handleMessage(msg);
-			@Nullable
-			final String result=(String)msg.obj;
-			@Nullable
-			final WeakReference<MainActivity> mainActivityWeakReference=Application.mainActivity;
-			if(mainActivityWeakReference!=null)
-			{
-				@Nullable
-				final MainActivity mainActivity=mainActivityWeakReference.get();
-				if(mainActivity!=null)
-				{
-					if(result!=null)
-					{
-						if(ERROR.equals(result))
-						{
-							StyleableToast.makeText(mainActivity,"Произошла ошибка. Попробуйте ещё раз",Toast.LENGTH_SHORT,R.style.ToastStyle).show();
-						}
-						else
-						{
-							final int status=msg.arg1;
-							switch(status)
-							{
-								case 1:
-									StyleableToast.makeText(mainActivity,"Картинка добавлена: \n"+result,Toast.LENGTH_SHORT,R.style.ToastStyle).show();
-									break;
-								case 2:
-									StyleableToast.makeText(mainActivity,"Картинка удалена: \n"+result,Toast.LENGTH_SHORT,R.style.ToastStyle).show();
-									break;
-							}
-						}
-					}
-				}
-			}
 		}
 	}
 }

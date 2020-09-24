@@ -25,4 +25,13 @@
 	<string name="dialog_message_delete_image">Вы действительно хотите удалить эту картинку?</string>
 	<string name="dialog_message_image_is_in_gallery">Картинка уже есть в списке</string>
 	<string name="dialog_message_error">Ошибка: \n%1$s</string>
+	<string name="notify_action_open">Перейти</string>
+	<string name="notify_action_share">Поделиться</string>
+	<string name="data_update_success">Данные обновлены</string>
+	<string name="data_update_null">Обновлений не обнаружено</string>
+	<string name="data_update_error">Ошибка обновления</string>
+	<string name="image_add_success">Картинка добавлена: \n%1$s</string>
+	<string name="image_delete_success">Картинка удалена: \n%1$s</string>
+	<string name="image_add_error">Ошибка добавления картинки. \nПопробуйте ещё раз</string>
+	<string name="image_delete_error">Ошибка удаления картинки. \nПопробуйте ещё раз</string>
 </resources>

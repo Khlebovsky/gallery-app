@@ -24,14 +24,14 @@ public final class SharedPreferences
 	public static android.content.SharedPreferences getSharedPreferences(@NonNull final Context context)
 	{
 		@Nullable
-		android.content.SharedPreferences sharedPreferences_=sharedPreferences;
-		if(sharedPreferences_!=null)
+		android.content.SharedPreferences sharedPreferences=SharedPreferences.sharedPreferences;
+		if(sharedPreferences!=null)
 		{
-			return sharedPreferences_;
+			return sharedPreferences;
 		}
-		sharedPreferences_=context.getSharedPreferences(SHARED_PREFERENCES_NAME,SHARED_PREFERENCES_MODE);
-		sharedPreferences=sharedPreferences_;
-		return sharedPreferences_;
+		sharedPreferences=context.getSharedPreferences(SHARED_PREFERENCES_NAME,SHARED_PREFERENCES_MODE);
+		SharedPreferences.sharedPreferences=sharedPreferences;
+		return sharedPreferences;
 	}
 
 	public static String getString(@NonNull final Context context,@NonNull final String key,@Nullable final String defaultValue)

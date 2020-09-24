@@ -10,7 +10,6 @@ import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkInfo;
 import android.os.*;
-import android.util.Log;
 import android.view.Display;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -258,6 +257,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 		}
 	}
 
+	// TODO ошибки в ресурсы
 	@Override
 	protected void onCreate(Bundle savedInstanceState)
 	{
@@ -326,12 +326,12 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 			{
 				@NonNull
 				final AlertDialog.Builder builder=Application.getAlertDialogBuilder(this);
-				if(Application.NO_INTERNET.equals(status))
+				if(Application.NO_INTERNET_TAG.equals(status))
 				{
 					builder.setTitle(resources.getString(R.string.dialog_title_error));
 					builder.setMessage(resources.getString(R.string.dialog_message_internet_error));
 				}
-				else if(Application.PROGRESS.equals(status))
+				else if(Application.PROGRESS_TAG.equals(status))
 				{
 					builder.setTitle(resources.getString(R.string.dialog_title_loading));
 					builder.setMessage(resources.getString(R.string.dialog_message_loading));

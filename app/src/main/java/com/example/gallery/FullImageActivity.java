@@ -10,6 +10,7 @@ import android.content.pm.ResolveInfo;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.media.Image;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
@@ -41,10 +42,6 @@ public class FullImageActivity extends AppCompatActivity
 	@NonNull
 	public static final String INTENT_EXTRA_NAME_NUM="Num";
 	@Nullable
-	public static FullImageActivity fullImageActivity;
-	@Nullable
-	public static PhotoView photoView;
-	@Nullable
 	NotificationManagerCompat notificationManagerCompat;
 	boolean isFullScreen;
 	int num;
@@ -63,27 +60,8 @@ public class FullImageActivity extends AppCompatActivity
 	private static final String SHARE_INTENT_TYPE="text/plain";
 	private static final int INTENT_CHOOSER_API=23;
 	private static final int REQUEST_CODE=100;
-	private static final int CLOSE_ACTIVITY_DELAY=50;
-
-	public static void closeActivity()
-	{
-		@Nullable
-		final PhotoView photoView=FullImageActivity.photoView;
-		@Nullable
-		final FullImageActivity fullImageActivity=FullImageActivity.fullImageActivity;
-		if(photoView!=null&&fullImageActivity!=null)
-		{
-			photoView.animate().alpha(0).setDuration(50).start();
-			new Handler().postDelayed(new Runnable()
-			{
-				@Override
-				public void run()
-				{
-					fullImageActivity.finish();
-				}
-			},CLOSE_ACTIVITY_DELAY);
-		}
-	}
+	@Nullable
+	private ImageCustomView imageCustomView;
 
 	void createNotificationChannel()
 	{
@@ -134,7 +112,7 @@ public class FullImageActivity extends AppCompatActivity
 		@NonNull
 		final PendingIntent actionOpenPendingIntent=PendingIntent.getActivity(FullImageActivity.this,0,actionOpenIntent,PendingIntent.FLAG_CANCEL_CURRENT);
 		@NonNull
-		final NotificationCompat.Action actionOpen=new NotificationCompat.Action(R.drawable.ic_notification_open,"Перейти",actionOpenPendingIntent);
+		final NotificationCompat.Action actionOpen=new NotificationCompat.Action(R.drawable.ic_notification_open,getResources().getString(R.string.notify_action_open),actionOpenPendingIntent);
 		return actionOpen;
 	}
 
@@ -143,7 +121,7 @@ public class FullImageActivity extends AppCompatActivity
 		@NonNull
 		final PendingIntent actionSharePendingIntent=PendingIntent.getActivity(FullImageActivity.this,0,getShareImageIntent(),PendingIntent.FLAG_CANCEL_CURRENT);
 		@NonNull
-		final NotificationCompat.Action actionShare=new NotificationCompat.Action(R.drawable.ic_notification_share,"Поделиться",actionSharePendingIntent);
+		final NotificationCompat.Action actionShare=new NotificationCompat.Action(R.drawable.ic_notification_share,getResources().getString(R.string.notify_action_share),actionSharePendingIntent);
 		return actionShare;
 	}
 
@@ -241,10 +219,13 @@ public class FullImageActivity extends AppCompatActivity
 
 	void initObjects()
 	{
-		fullImageActivity=this;
 		Application.fullImageActivity=new WeakReference<>(FullImageActivity.this);
 		@NonNull
 		final PhotoView photoView=findViewById(R.id.photo_view);
+		@NonNull
+		final ViewConfiguration viewConfiguration=ViewConfiguration.get(photoView.getContext());
+		final int touchSlop=viewConfiguration.getScaledTouchSlop();
+		final int imageShiftThreshold=getResources().getDimensionPixelSize(R.dimen.imageShiftThreshold);
 		if(Build.VERSION.SDK_INT >= FULL_SCREEN_API)
 		{
 			photoView.setOnClickListener(new View.OnClickListener()
@@ -265,7 +246,12 @@ public class FullImageActivity extends AppCompatActivity
 				}
 			});
 		}
-		FullImageActivity.photoView=photoView;
+		@NonNull
+		final ImageCustomView imageCustomView=findViewById(R.id.full_image_parent);
+		imageCustomView.fullImageActivity=this;
+		imageCustomView.photoView=photoView;
+		this.imageCustomView=imageCustomView;
+		ImageCustomView.initStatic(touchSlop,imageShiftThreshold);
 	}
 
 	void initSettings()
@@ -285,7 +271,6 @@ public class FullImageActivity extends AppCompatActivity
 		initSettings();
 		setHomeButton();
 		initObjects();
-		ImageCustomView.initStatic();
 		@NonNull
 		final Intent intent=getIntent();
 		//noinspection ConstantConditions
@@ -440,17 +425,25 @@ public class FullImageActivity extends AppCompatActivity
 
 	void showFullImage(@Nullable final File path)
 	{
-		@Nullable
-		final PhotoView photoView=FullImageActivity.photoView;
-		if(path!=null&&photoView!=null)
+		if(path!=null)
 		{
-			@NonNull
-			final BitmapWorkerTask task=new BitmapWorkerTask(photoView,String.valueOf(path));
-			task.execute(1);
-		}
-		else
-		{
-			showErrorAlertDialog("The requested picture does not exist");
+			@Nullable
+			final ImageCustomView imageCustomView=this.imageCustomView;
+			if(imageCustomView!=null)
+			{
+				@Nullable
+				final PhotoView photoView=imageCustomView.photoView;
+				if(photoView!=null)
+				{
+					@NonNull
+					final BitmapWorkerTask task=new BitmapWorkerTask(photoView,String.valueOf(path));
+					task.execute(1);
+				}
+				else
+				{
+					showErrorAlertDialog("The requested picture does not exist");
+				}
+			}
 		}
 	}
 

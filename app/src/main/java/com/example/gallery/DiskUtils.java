@@ -14,11 +14,11 @@ import androidx.annotation.Nullable;
 public final class DiskUtils
 {
 	@NonNull
-	private static final String PREVIEWS="previews";
+	private static final String PREVIEWS_DIR_NAME="previews";
 	@NonNull
-	private static final String BYTES="bytes";
+	private static final String BYTES_DIR_NAME="bytes";
 	@NonNull
-	private static final String LINKS_FILE="links.txt";
+	private static final String LINKS_FILE_NAME="links.txt";
 	@Nullable
 	private static File cacheDir;
 	@Nullable
@@ -172,7 +172,7 @@ public final class DiskUtils
 			makeDir(imagePreviewsDir);
 			return imagePreviewsDir;
 		}
-		imagePreviewsDir=new File(cacheDir,PREVIEWS);
+		imagePreviewsDir=new File(cacheDir,PREVIEWS_DIR_NAME);
 		DiskUtils.imagePreviewsDir=imagePreviewsDir;
 		makeDir(imagePreviewsDir);
 		return imagePreviewsDir;
@@ -187,7 +187,7 @@ public final class DiskUtils
 			makeDir(imageBytesDir);
 			return imageBytesDir;
 		}
-		imageBytesDir=new File(cacheDir,BYTES);
+		imageBytesDir=new File(cacheDir,BYTES_DIR_NAME);
 		DiskUtils.imagesBytesDir=imageBytesDir;
 		makeDir(imageBytesDir);
 		return imageBytesDir;
@@ -202,7 +202,7 @@ public final class DiskUtils
 			createFile(linksFile);
 			return linksFile;
 		}
-		linksFile=new File(cacheDir,LINKS_FILE);
+		linksFile=new File(cacheDir,LINKS_FILE_NAME);
 		DiskUtils.linksFile=linksFile;
 		createFile(linksFile);
 		return linksFile;
@@ -308,7 +308,7 @@ public final class DiskUtils
 			while((url=bufferedReader.readLine())!=null)
 			{
 				Application.URLS_LIST.add(url);
-				Application.addUrlInUrlsStatusList(url,Application.PROGRESS);
+				Application.addUrlInUrlsStatusList(url,Application.PROGRESS_TAG);
 			}
 			bufferedReader.close();
 		}

@@ -2,7 +2,9 @@ package com.example.gallery;
 
 import android.content.Context;
 import android.content.res.Resources;
+import android.os.Handler;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.ViewConfiguration;
 import android.widget.LinearLayout;
@@ -12,12 +14,17 @@ import androidx.annotation.Nullable;
 
 public class ImageCustomView extends LinearLayout
 {
+	@Nullable
+	public PhotoView photoView;
+	@Nullable
+	public FullImageActivity fullImageActivity;
 	private static final float MAX_DRAG_ZOOM=1.1f;
 	private static final float MIN_DRAG_ZOOM=1;
+	private static final int CLOSE_ACTIVITY_DELAY=50;
 	private static float offsetDY;
 	private static float downLength;
-	private static int touchSlop;
 	private static boolean isTouch;
+	private static int touchSlop;
 	private static int imageShiftThreshold;
 
 	public ImageCustomView(Context context,@Nullable AttributeSet attrs)
@@ -30,35 +37,38 @@ public class ImageCustomView extends LinearLayout
 		super(context,attrs,defStyleAttr);
 	}
 
-	// TODO передавать photoView
-	public static void initStatic()
+	void closeActivity()
 	{
 		@Nullable
-		final PhotoView photoView=FullImageActivity.photoView;
-		if(photoView!=null)
-		{
-			@NonNull
-			final ViewConfiguration viewConfiguration=ViewConfiguration.get(photoView.getContext());
-			touchSlop=viewConfiguration.getScaledTouchSlop();
-		}
+		final PhotoView photoView=this.photoView;
 		@Nullable
-		final WeakReference<FullImageActivity> fullImageWeakReference=Application.fullImageActivity;
-		if(fullImageWeakReference!=null)
+		final FullImageActivity fullImageActivity=this.fullImageActivity;
+		if(photoView!=null&&fullImageActivity!=null)
 		{
-			@Nullable
-			final Resources resources=fullImageWeakReference.get().getResources();
-			if(resources!=null)
+			photoView.animate().alpha(0).setDuration(50).start();
+			//noinspection AnonymousInnerClassMayBeStatic
+			new Handler().postDelayed(new Runnable()
 			{
-				imageShiftThreshold=resources.getDimensionPixelSize(R.dimen.imageShiftThreshold);
-			}
+				@Override
+				public void run()
+				{
+					fullImageActivity.finish();
+				}
+			},CLOSE_ACTIVITY_DELAY);
 		}
+	}
+
+	public static void initStatic(final int touchSlop,final int imageShiftThreshold)
+	{
+		ImageCustomView.touchSlop=touchSlop;
+		ImageCustomView.imageShiftThreshold=imageShiftThreshold;
 	}
 
 	@Override
 	public boolean onInterceptTouchEvent(MotionEvent motionEvent)
 	{
 		@Nullable
-		final PhotoView photoView=FullImageActivity.photoView;
+		final PhotoView photoView=this.photoView;
 		if(photoView!=null&&photoView.getScale() >= MIN_DRAG_ZOOM&&photoView.getScale()<=MAX_DRAG_ZOOM)
 		{
 			final int imageShiftThreshold=ImageCustomView.imageShiftThreshold;
@@ -72,7 +82,7 @@ public class ImageCustomView extends LinearLayout
 				case MotionEvent.ACTION_UP:
 					if(currentImagePositionY >= imageShiftThreshold)
 					{
-						FullImageActivity.closeActivity();
+						closeActivity();
 						break;
 					}
 					isTouch=false;
